@@ -2,6 +2,8 @@
 
 #include <assert.h>
 
+using namespace ArcBall;
+
 void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC, const linAlg::vec2_t& screenPos, const int32_t fbWidth, const int32_t fbHeight ) {
     // map cursor pos to NDC and project to unit sphere for z coordinate
     mCurrMouseNDC[0] = (2.0f * screenPos[0] / (static_cast<float>(fbWidth) - 1.0f)) - 1.0f;
@@ -41,7 +43,7 @@ ArcBallControls::ArcBallControls() {
     mCurrMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
 }
 
-Status_t ArcBallControls::update( const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH ) {
+eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH ) {
 
     mCurrMouseX = mouseX;
     mCurrMouseY = mouseY;
@@ -104,7 +106,7 @@ Status_t ArcBallControls::update( const float mouseX, const float mouseY, const 
             printf( "LMB released\n" );
             mLMBdown = false;
         }
-    } else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
+    } else { // Traditional Arcball - works, but doesn't spin more than 180ï¿½ in any dir
         if (mLMBdown) {
             //printf( "LMB is down\n" );
             ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
@@ -170,7 +172,7 @@ Status_t ArcBallControls::update( const float mouseX, const float mouseY, const 
     }
     //}
 
-    return Status_t::OK();
+    return eRetVal::OK();
 }
 
 void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat )
