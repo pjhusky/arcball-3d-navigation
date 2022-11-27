@@ -1,5 +1,7 @@
 #include "arcBallControls.h"
 
+#include <stdio.h>
+
 #include <assert.h>
 
 using namespace ArcBall;
@@ -172,7 +174,7 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
     }
     //}
 
-    return eRetVal::OK();
+    return eRetVal::OK;
 }
 
 void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat )
