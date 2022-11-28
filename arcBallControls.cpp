@@ -1,10 +1,14 @@
 #include "arcBallControls.h"
 
-#include <stdio.h>
-
+//#include <stdio.h>
+#include <limits.h>
 #include <assert.h>
 
 using namespace ArcBall;
+
+namespace {
+    static constexpr float practicallyZero = std::numeric_limits<float>::epsilon() * 10.0f;
+}
 
 void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC, const linAlg::vec2_t& screenPos, const int32_t fbWidth, const int32_t fbHeight ) {
     // map cursor pos to NDC and project to unit sphere for z coordinate
@@ -60,7 +64,8 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
     if (mMouseInteractMode == MouseInteractMode::wrapAround) { // continuous ArcBall rotation with grabbed mouse
 
         //if (mLMBdown) { // when using mouse_dx directly
-        if ((mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy > 0.001) || mLMBdown) {
+        if ((mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy > practicallyZero) || mLMBdown) {
+        //if ( mLMBdown) {
             //printf( "LMB is down\n" );
 
             // always reset start to cener of ArcBall
@@ -78,7 +83,8 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
             if (cosAngle <= 1.0f) {
                 const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
                 const float radMousePtDir = acosf( cosMousePtDirs );
-                if (fabsf( radMousePtDir > 0.01 )) {
+                if (fabsf( radMousePtDir > practicallyZero )) 
+                {
                     linAlg::vec3_t normMousePtDirs;
                     linAlg::cross( normMousePtDirs, mStartMouseNDC, mCurrMouseNDC );
                     linAlg::normalize( normMousePtDirs );
@@ -101,11 +107,11 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
         }
 
         if (!mLMBdown && LMBpressed) {
-            printf( "LMB pressed\n" );
+            //printf( "LMB pressed\n" );
             mLMBdown = true;
         }
         if (mLMBdown && !LMBpressed) {
-            printf( "LMB released\n" );
+            //printf( "LMB released\n" );
             mLMBdown = false;
         }
     } else { // Traditional Arcball - works, but doesn't spin more than 180� in any dir
@@ -140,7 +146,7 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
         }
 
         if (!mLMBdown && LMBpressed) {
-            printf( "LMB pressed\n" );
+            //printf( "LMB pressed\n" );
             ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
 
             linAlg::applyTransformation( mRefFrameMat, &mStartMouseNDC, 1 );
@@ -149,7 +155,7 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
             mLMBdown = true;
         }
         if (mLMBdown && !LMBpressed) {
-            printf( "LMB released\n" );
+            //printf( "LMB released\n" );
             linAlg::mat3x4_t tmpLastRotMat;
             linAlg::multMatrix( tmpLastRotMat, mCurrRotMat, mPrevRotMat );
             mPrevRotMat = tmpLastRotMat;
@@ -165,12 +171,11 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
     mPrevMouseY = mCurrMouseY;
 
     //if (!mLMBdown) {
-    const float practicallyZero = 0.00001f;
     if (fabsf( mTargetMouse_dx ) > practicallyZero) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-        mTargetMouse_dx *= 0.91f;
+        mTargetMouse_dx *= getDampingFactor();
     }
     if (fabsf( mTargetMouse_dy ) > practicallyZero) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-        mTargetMouse_dy *= 0.91f;
+        mTargetMouse_dy *= getDampingFactor();
     }
     //}
 

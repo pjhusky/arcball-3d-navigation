@@ -24,6 +24,8 @@ namespace ArcBall {
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
 
         void setDampingFactor( const float dampingFactor ) { mDampingFactor = dampingFactor; }
+        float getDampingFactor() const { return mDampingFactor; }
+
         void setMouseSensitivity( const float mouseSensitivity ) { mMouseSensitivity = mouseSensitivity; }
 
         void setInteractionMode( const MouseInteractMode mode ) { mMouseInteractMode = mode; }
