@@ -32,6 +32,7 @@ namespace ArcBall {
         MouseInteractMode getInteractionMode() const { return mMouseInteractMode; }
 
         void resetTrafos();
+        void setActive( const bool isActive ) { mIsActive = isActive; }
 
     private:
         linAlg::mat3x4_t mArcRotMat;
@@ -56,6 +57,7 @@ namespace ArcBall {
         float mMouseSensitivity;
         float mDampingFactor;
         bool  mLMBdown;
+        bool  mIsActive;
     };
 }
 #endif // _ARCBALLCONTROLS_H_9ec4f00a_2117_4578_937e_9f4fb94dc759

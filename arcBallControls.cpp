@@ -26,7 +26,8 @@ void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC
 }
 
 
-ArcBallControls::ArcBallControls() {
+ArcBallControls::ArcBallControls()
+    : mIsActive( true ) {
 
     resetTrafos();
 
@@ -53,8 +54,8 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
 
     mCurrMouseX = mouseX;
     mCurrMouseY = mouseY;
-    const float mouse_dx = (mCurrMouseX - mPrevMouseX) * mMouseSensitivity;
-    const float mouse_dy = (mCurrMouseY - mPrevMouseY) * mMouseSensitivity;
+    const float mouse_dx = ( mIsActive ) ? (mCurrMouseX - mPrevMouseX) * mMouseSensitivity : 0.0f;
+    const float mouse_dy = ( mIsActive ) ? (mCurrMouseY - mPrevMouseY) * mMouseSensitivity : 0.0f;
 
     if (mLMBdown) {
         mTargetMouse_dx += mouse_dx;
