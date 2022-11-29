@@ -27,7 +27,8 @@ void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC
 
 
 ArcBallControls::ArcBallControls()
-    : mIsActive( true ) {
+    : mDeadZone( practicallyZero * 100.0f )
+    , mIsActive( true ) {
 
     resetTrafos();
 
@@ -65,7 +66,7 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
     if (mMouseInteractMode == MouseInteractMode::wrapAround) { // continuous ArcBall rotation with grabbed mouse
 
         //if (mLMBdown) { // when using mouse_dx directly
-        if ((mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy > practicallyZero) || mLMBdown) {
+        if ((mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy > mDeadZone) || mLMBdown) {
         //if ( mLMBdown) {
             //printf( "LMB is down\n" );
 
@@ -84,8 +85,7 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
             if (cosAngle <= 1.0f) {
                 const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
                 const float radMousePtDir = acosf( cosMousePtDirs );
-                if (fabsf( radMousePtDir > practicallyZero )) 
-                {
+                if (fabsf( radMousePtDir > mDeadZone )) {
                     linAlg::vec3_t normMousePtDirs;
                     linAlg::cross( normMousePtDirs, mStartMouseNDC, mCurrMouseNDC );
                     linAlg::normalize( normMousePtDirs );
@@ -172,11 +172,15 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
     mPrevMouseY = mCurrMouseY;
 
     //if (!mLMBdown) {
-    if (fabsf( mTargetMouse_dx ) > practicallyZero) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+    if (fabsf( mTargetMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
         mTargetMouse_dx *= getDampingFactor();
+    } else {
+        mTargetMouse_dx = 0.0f;
     }
-    if (fabsf( mTargetMouse_dy ) > practicallyZero) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+    if (fabsf( mTargetMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
         mTargetMouse_dy *= getDampingFactor();
+    } else {
+        mTargetMouse_dy = 0.0f;
     }
     //}
 

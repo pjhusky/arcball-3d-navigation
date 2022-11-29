@@ -30,6 +30,7 @@ namespace ArcBall {
 
         void setInteractionMode( const MouseInteractMode mode ) { mMouseInteractMode = mode; }
         MouseInteractMode getInteractionMode() const { return mMouseInteractMode; }
+        void setDeadZone( const float deadZone ) { mDeadZone = deadZone; }
 
         void resetTrafos();
         void setActive( const bool isActive ) { mIsActive = isActive; }
@@ -56,6 +57,7 @@ namespace ArcBall {
         float mTargetMouse_dy;
         float mMouseSensitivity;
         float mDampingFactor;
+        float mDeadZone;
         bool  mLMBdown;
         bool  mIsActive;
     };
