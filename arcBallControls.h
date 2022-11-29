@@ -10,11 +10,11 @@
 namespace ArcBall {
     struct ArcBallControls {
 
-        enum class MouseInteractMode {
-            clamp = 1<<0, // mouse stays on screen / rotation stops and is restricted
-            wrapAround = 1<<1, // mouse may go off screen, arc ball will continue to rotate
+        struct InteractionModeDesc {
+            bool fullCircle;  // mouse may go off screen, arc ball will continue to rotate
+            bool smooth;// rotation keeps going on when mouse button is no longer pressed
         };
-
+        
         static void mapScreenPosToArcBallPosNDC( linAlg::vec3_t& currMouseNDC, const linAlg::vec2_t& screenPos, const int32_t fbWidth, const int32_t fbHeight );
 
         ArcBallControls();
@@ -28,8 +28,9 @@ namespace ArcBall {
 
         void setMouseSensitivity( const float mouseSensitivity ) { mMouseSensitivity = mouseSensitivity; }
 
-        void setInteractionMode( const MouseInteractMode mode ) { mMouseInteractMode = mode; }
-        MouseInteractMode getInteractionMode() const { return mMouseInteractMode; }
+        void setInteractionMode( const InteractionModeDesc modeDesc ) { mInteractionModeDesc = modeDesc; }
+        InteractionModeDesc getInteractionMode() const { return mInteractionModeDesc; }
+
         void setDeadZone( const float deadZone ) { mDeadZone = deadZone; }
 
         void resetTrafos();
@@ -43,8 +44,6 @@ namespace ArcBall {
         linAlg::mat3x4_t mPrevRotMat;
 
         linAlg::mat3_t mRefFrameMat; // for camera rolling - without camera rolling, this may stay a unit matrix
-
-        MouseInteractMode mMouseInteractMode;
         
         linAlg::vec3_t mStartMouseNDC;
         linAlg::vec3_t mCurrMouseNDC;
@@ -58,6 +57,8 @@ namespace ArcBall {
         float mMouseSensitivity;
         float mDampingFactor;
         float mDeadZone;
+
+        InteractionModeDesc mInteractionModeDesc;
         bool  mLMBdown;
         bool  mIsActive;
     };

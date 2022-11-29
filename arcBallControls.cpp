@@ -27,13 +27,12 @@ void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC
 
 
 ArcBallControls::ArcBallControls()
-    : mDeadZone( practicallyZero * 100.0f )
+    : mDeadZone( practicallyZero * 1000.0f )
     , mIsActive( true ) {
 
     resetTrafos();
 
-    setInteractionMode( MouseInteractMode::wrapAround );
-    //setInteractionMode( MouseInteractMode::clamp );
+    setInteractionMode( InteractionModeDesc{ .fullCircle = true, .smooth = true } );
 
     setDampingFactor( 0.91f );
     setMouseSensitivity( 0.23f );
@@ -63,11 +62,13 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
         mTargetMouse_dy += mouse_dy;
     }
 
-    if (mMouseInteractMode == MouseInteractMode::wrapAround) { // continuous ArcBall rotation with grabbed mouse
+    if (mInteractionModeDesc.fullCircle == true) { // continuous ArcBall rotation with grabbed mouse
 
         //if (mLMBdown) { // when using mouse_dx directly
-        if ((mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy > mDeadZone) || mLMBdown) {
-        //if ( mLMBdown) {
+        //if ((mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy > mDeadZone) || mLMBdown) {
+        //if (sqrtf(mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy) > mDeadZone || mLMBdown) {
+
+        if ( ( mInteractionModeDesc.smooth && sqrtf( mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy ) > mDeadZone ) || mLMBdown ) {
             //printf( "LMB is down\n" );
 
             // always reset start to cener of ArcBall
@@ -85,7 +86,8 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
             if (cosAngle <= 1.0f) {
                 const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
                 const float radMousePtDir = acosf( cosMousePtDirs );
-                if (fabsf( radMousePtDir > mDeadZone )) {
+                if (fabsf( radMousePtDir > mDeadZone )) 
+                {
                     linAlg::vec3_t normMousePtDirs;
                     linAlg::cross( normMousePtDirs, mStartMouseNDC, mCurrMouseNDC );
                     linAlg::normalize( normMousePtDirs );
