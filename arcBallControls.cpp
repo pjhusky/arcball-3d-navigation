@@ -34,8 +34,10 @@ ArcBallControls::ArcBallControls()
 
     setInteractionMode( InteractionModeDesc{ .fullCircle = true, .smooth = true } );
 
-    setDampingFactor( 0.91f );
-    setMouseSensitivity( 0.23f );
+    setDampingFactor( 0.875f );
+    setMouseSensitivity( 0.866f );
+    setMaxTraditionalRotDeg( 360.0f ); 
+
     mLMBdown = false;
 
     mCurrMouseX = 0.0f;
@@ -50,23 +52,26 @@ ArcBallControls::ArcBallControls()
     mCurrMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
 }
 
-eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH ) {
+eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH ) {
+
+    (void)deltaTimeSec;
 
     mCurrMouseX = mouseX;
     mCurrMouseY = mouseY;
-    const float mouse_dx = ( mIsActive ) ? (mCurrMouseX - mPrevMouseX) * mMouseSensitivity : 0.0f;
-    const float mouse_dy = ( mIsActive ) ? (mCurrMouseY - mPrevMouseY) * mMouseSensitivity : 0.0f;
+    const float mouse_dx = ( mIsActive ) ? (mCurrMouseX - mPrevMouseX) : 0.0f;
+    const float mouse_dy = ( mIsActive ) ? (mCurrMouseY - mPrevMouseY) : 0.0f;
 
-    if (mLMBdown) {
-        mTargetMouse_dx += mouse_dx;
-        mTargetMouse_dy += mouse_dy;
+    if (mInteractionModeDesc.smooth) {
+        if (mLMBdown) {
+            mTargetMouse_dx += mouse_dx * mMouseSensitivity; // * deltaTimeSec;
+            mTargetMouse_dy += mouse_dy * mMouseSensitivity; // * deltaTimeSec;
+        }
+    } else {
+        mTargetMouse_dx = mouse_dx * mMouseSensitivity;
+        mTargetMouse_dy = mouse_dy * mMouseSensitivity;
     }
 
     if (mInteractionModeDesc.fullCircle == true) { // continuous ArcBall rotation with grabbed mouse
-
-        //if (mLMBdown) { // when using mouse_dx directly
-        //if ((mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy > mDeadZone) || mLMBdown) {
-        //if (sqrtf(mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy) > mDeadZone || mLMBdown) {
 
         if ( ( mInteractionModeDesc.smooth && sqrtf( mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy ) > mDeadZone ) || mLMBdown ) {
             //printf( "LMB is down\n" );
@@ -117,7 +122,7 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
             //printf( "LMB released\n" );
             mLMBdown = false;
         }
-    } else { // Traditional Arcball - works, but doesn't spin more than 180� in any dir
+    } else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
         if (mLMBdown) {
             //printf( "LMB is down\n" );
             ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
@@ -134,7 +139,7 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
             float cosAngle = linAlg::dot( mStartMouseNDC, mCurrMouseNDC );
             if (cosAngle < 1.0f - std::numeric_limits<float>::epsilon() * 100.0f) {
                 const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
-                const float radMousePtDir = acosf( cosMousePtDirs );
+                const float radMousePtDir = acosf( cosMousePtDirs ) * ( mMaxTraditionalRotDeg * ( 1.0f / 180.0f ) );
                 linAlg::vec3_t normMousePtDirs;
                 linAlg::cross( normMousePtDirs, mStartMouseNDC, mCurrMouseNDC );
                 linAlg::normalize( normMousePtDirs );
@@ -173,18 +178,23 @@ eRetVal ArcBallControls::update( const float mouseX, const float mouseY, const b
     mPrevMouseX = mCurrMouseX;
     mPrevMouseY = mCurrMouseY;
 
-    //if (!mLMBdown) {
-    if (fabsf( mTargetMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-        mTargetMouse_dx *= getDampingFactor();
-    } else {
+    if (mInteractionModeDesc.smooth) {
+        if (fabsf( mTargetMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+            mTargetMouse_dx *= getDampingFactor();
+        }
+        else {
+            mTargetMouse_dx = 0.0f;
+        }
+        if (fabsf( mTargetMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+            mTargetMouse_dy *= getDampingFactor();
+        }
+        else {
+            mTargetMouse_dy = 0.0f;
+        }
+    } /*else {
         mTargetMouse_dx = 0.0f;
-    }
-    if (fabsf( mTargetMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-        mTargetMouse_dy *= getDampingFactor();
-    } else {
         mTargetMouse_dy = 0.0f;
-    }
-    //}
+    }*/
 
     return eRetVal::OK;
 }

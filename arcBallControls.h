@@ -18,7 +18,7 @@ namespace ArcBall {
         static void mapScreenPosToArcBallPosNDC( linAlg::vec3_t& currMouseNDC, const linAlg::vec2_t& screenPos, const int32_t fbWidth, const int32_t fbHeight );
 
         ArcBallControls();
-        eRetVal update( const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH );
+        eRetVal update( const float deltaTimeSec, const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH );
         const linAlg::mat3x4_t& getRotationMatrix() const { return mArcRotMat; }
 
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
@@ -30,6 +30,8 @@ namespace ArcBall {
 
         void setInteractionMode( const InteractionModeDesc modeDesc ) { mInteractionModeDesc = modeDesc; }
         InteractionModeDesc getInteractionMode() const { return mInteractionModeDesc; }
+
+        void setMaxTraditionalRotDeg( const float maxTraditionalRotDeg ) { mMaxTraditionalRotDeg = maxTraditionalRotDeg;  }
 
         void setDeadZone( const float deadZone ) { mDeadZone = deadZone; }
 
@@ -57,6 +59,8 @@ namespace ArcBall {
         float mMouseSensitivity;
         float mDampingFactor;
         float mDeadZone;
+
+        float mMaxTraditionalRotDeg; // 180.0f for traditional arcBall, 360.0f for one full rotation per mouse-drag (stronger movement)
 
         InteractionModeDesc mInteractionModeDesc;
         bool  mLMBdown;
