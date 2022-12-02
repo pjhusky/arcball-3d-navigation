@@ -84,11 +84,11 @@ eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, c
 
             linAlg::normalize( mCurrMouseNDC );
             linAlg::normalize( mStartMouseNDC );
-            //volatile 
+            
             float cosAngle = linAlg::dot( mStartMouseNDC, mCurrMouseNDC );
             assert( cosAngle > 0.0 );
             //if (cosAngle < 1.0f - std::numeric_limits<float>::epsilon() * 100.0f) {
-            if (cosAngle <= 1.0f) {
+            if (cosAngle < 1.0f - std::numeric_limits<float>::epsilon() ) {
                 const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
                 const float radMousePtDir = acosf( cosMousePtDirs );
                 if (fabsf( radMousePtDir > mDeadZone )) 
