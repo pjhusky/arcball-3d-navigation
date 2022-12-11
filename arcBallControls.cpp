@@ -14,6 +14,7 @@ void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC
     // map cursor pos to NDC and project to unit sphere for z coordinate
     mCurrMouseNDC[0] = (2.0f * screenPos[0] / (static_cast<float>(fbWidth) - 1.0f)) - 1.0f;
     mCurrMouseNDC[1] = 2.0f - (2.0f * screenPos[1] / (static_cast<float>(fbHeight) - 1.0f)) - 1.0f;
+
     const float currX2 = mCurrMouseNDC[0] * mCurrMouseNDC[0];
     const float currY2 = mCurrMouseNDC[1] * mCurrMouseNDC[1];
 
@@ -52,7 +53,13 @@ ArcBallControls::ArcBallControls()
     mCurrMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
 }
 
-eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH ) {
+eRetVal ArcBallControls::update( const float deltaTimeSec, 
+                                 const float mouseX, 
+                                 const float mouseY, 
+                                 const bool LMBpressed, 
+                                 const bool RMBpressed, 
+                                 const int32_t screenW, 
+                                 const int32_t screenH ) {
 
     (void)deltaTimeSec;
 
@@ -76,7 +83,7 @@ eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, c
         if ( ( mInteractionModeDesc.smooth && sqrtf( mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy ) > mDeadZone ) || mLMBdown ) {
             //printf( "LMB is down\n" );
 
-            // always reset start to cener of ArcBall
+            // always reset start to center of ArcBall
             mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
 
             // only take mouse delta and add it to center of ArcBall
@@ -100,10 +107,18 @@ eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, c
                     linAlg::mat3x4_t rotArcBallDeltaMat;
 
                     // bring rotation vector into ref frame
-                    linAlg::applyTransformation( mRefFrameMat, &normMousePtDirs, 1 );
+                    linAlg::applyTransformationToPoint( mRefFrameMat, &normMousePtDirs, 1 );
                     linAlg::normalize( normMousePtDirs );
 
                     linAlg::loadRotationAroundAxis( rotArcBallDeltaMat, normMousePtDirs, radMousePtDir );
+
+                #if 1
+                    linAlg::mat3x4_t pivotTranslationMatrix;
+                    linAlg::loadTranslationMatrix( pivotTranslationMatrix, linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] } );
+                    linAlg::mat3x4_t invPivotTranslationMatrix;
+                    linAlg::loadTranslationMatrix( invPivotTranslationMatrix, mRotationPivotOffset );
+                    rotArcBallDeltaMat = invPivotTranslationMatrix * rotArcBallDeltaMat * pivotTranslationMatrix;
+                #endif
 
                     linAlg::mat3x4_t tmpLastRotMat;
                     linAlg::multMatrix( tmpLastRotMat, rotArcBallDeltaMat, mArcRotMat );
@@ -130,9 +145,9 @@ eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, c
             linAlg::normalize( mCurrMouseNDC );
             linAlg::normalize( mStartMouseNDC );
 
-            linAlg::applyTransformation( mRefFrameMat, &mCurrMouseNDC, 1 );
+            linAlg::applyTransformationToPoint( mRefFrameMat, &mCurrMouseNDC, 1 );
             linAlg::normalize( mCurrMouseNDC );
-            //linAlg::applyTransformation( mRefFrameMat, &mStartMouseNDC, 1 );
+            //linAlg::applyTransformationToPoint( mRefFrameMat, &mStartMouseNDC, 1 );
             //linAlg::normalize( mStartMouseNDC );
 
 
@@ -145,11 +160,15 @@ eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, c
                 linAlg::normalize( normMousePtDirs );
 
                 // bring rotation vector into ref frame
-                //linAlg::applyTransformation( mRefFrameMat, &normMousePtDirs, 1 );
-                //linAlg::normalize( normMousePtDirs );
-
                 linAlg::loadRotationAroundAxis( mCurrRotMat, normMousePtDirs, radMousePtDir );
-                //linAlg::orthogonalize( mCurrRotMat );
+
+            #if 1
+                linAlg::mat3x4_t pivotTranslationMatrix;
+                linAlg::loadTranslationMatrix( pivotTranslationMatrix, linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] } );
+                linAlg::mat3x4_t invPivotTranslationMatrix;
+                linAlg::loadTranslationMatrix( invPivotTranslationMatrix, mRotationPivotOffset );
+                mCurrRotMat = invPivotTranslationMatrix * mCurrRotMat * pivotTranslationMatrix;
+            #endif
             }
         }
 
@@ -157,7 +176,7 @@ eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, c
             //printf( "LMB pressed\n" );
             ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
 
-            linAlg::applyTransformation( mRefFrameMat, &mStartMouseNDC, 1 );
+            linAlg::applyTransformationToPoint( mRefFrameMat, &mStartMouseNDC, 1 );
             linAlg::normalize( mStartMouseNDC );
 
             mLMBdown = true;
@@ -172,7 +191,6 @@ eRetVal ArcBallControls::update( const float deltaTimeSec, const float mouseX, c
         }
 
         linAlg::multMatrix( mArcRotMat, mCurrRotMat, mPrevRotMat );
-        //linAlg::orthogonalize( mArcRotMat );
     }
 
     mPrevMouseX = mCurrMouseX;

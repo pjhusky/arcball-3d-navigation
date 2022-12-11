@@ -3,7 +3,7 @@
 
 
 #include "eRetVal_ArcBall.h"
-#include "../math/linAlg.h"
+#include "../math/linAlg.h" // TODO: can we make it work like this: "#include <linAlg.h>"
 
 #include <stdint.h>
 
@@ -18,10 +18,17 @@ namespace ArcBall {
         static void mapScreenPosToArcBallPosNDC( linAlg::vec3_t& currMouseNDC, const linAlg::vec2_t& screenPos, const int32_t fbWidth, const int32_t fbHeight );
 
         ArcBallControls();
-        eRetVal update( const float deltaTimeSec, const float mouseX, const float mouseY, const bool LMBpressed, const bool RMBpressed, const int32_t screenW, const int32_t screenH );
+        eRetVal update( const float deltaTimeSec, 
+                        const float mouseX, 
+                        const float mouseY,     
+                        const bool LMBpressed, 
+                        const bool RMBpressed, 
+                        const int32_t screenW, 
+                        const int32_t screenH );
         const linAlg::mat3x4_t& getRotationMatrix() const { return mArcRotMat; }
 
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
+        void setRotationPivotOffset( const linAlg::vec3_t& offset ) { mRotationPivotOffset = offset; }
 
         void setDampingFactor( const float dampingFactor ) { mDampingFactor = dampingFactor; }
         float getDampingFactor() const { return mDampingFactor; }
@@ -46,7 +53,8 @@ namespace ArcBall {
         linAlg::mat3x4_t mPrevRotMat;
 
         linAlg::mat3_t mRefFrameMat; // for camera rolling - without camera rolling, this may stay a unit matrix
-        
+        linAlg::vec3_t mRotationPivotOffset;
+
         linAlg::vec3_t mStartMouseNDC;
         linAlg::vec3_t mCurrMouseNDC;
 
