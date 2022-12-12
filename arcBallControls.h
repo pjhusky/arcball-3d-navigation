@@ -29,6 +29,7 @@ namespace ArcBall {
 
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
         void setRotationPivotOffset( const linAlg::vec3_t& offset ) { mRotationPivotOffset = offset; }
+        void setCamTiltRadAngle( const float camTiltRadAngle ) { mCamTiltRadAngle = camTiltRadAngle; }
 
         void setDampingFactor( const float dampingFactor ) { mDampingFactor = dampingFactor; }
         float getDampingFactor() const { return mDampingFactor; }
@@ -54,6 +55,7 @@ namespace ArcBall {
 
         linAlg::mat3_t mRefFrameMat; // for camera rolling - without camera rolling, this may stay a unit matrix
         linAlg::vec3_t mRotationPivotOffset;
+        float          mCamTiltRadAngle;
 
         linAlg::vec3_t mStartMouseNDC;
         linAlg::vec3_t mCurrMouseNDC;

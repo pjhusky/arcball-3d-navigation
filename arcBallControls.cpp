@@ -120,6 +120,12 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
                     rotArcBallDeltaMat = invPivotTranslationMatrix * rotArcBallDeltaMat * pivotTranslationMatrix;
                 #endif
 
+                #if 0
+                    linAlg::mat3x4_t rotTiltMat3x4;
+                    linAlg::castMatrix( rotTiltMat3x4, mRefFrameMat );
+                    rotArcBallDeltaMat = rotArcBallDeltaMat * rotTiltMat3x4;
+                #endif
+
                     linAlg::mat3x4_t tmpLastRotMat;
                     linAlg::multMatrix( tmpLastRotMat, rotArcBallDeltaMat, mArcRotMat );
                     mArcRotMat = tmpLastRotMat;
@@ -169,6 +175,34 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
                 linAlg::loadTranslationMatrix( invPivotTranslationMatrix, mRotationPivotOffset );
                 mCurrRotMat = invPivotTranslationMatrix * mCurrRotMat * pivotTranslationMatrix;
             #endif
+
+            #if 0
+                linAlg::mat3x4_t rotTiltMat3x4;
+                //linAlg::castMatrix( rotTiltMat3x4, mRefFrameMat );
+                linAlg::loadRotationZMatrix( rotTiltMat3x4, mCamTiltRadAngle );
+                //mCurrRotMat = mCurrRotMat * rotTiltMat3x4;
+                //mCurrRotMat = rotTiltMat3x4 * mCurrRotMat;
+            #endif
+
+            #if 0 // tilt (roll) works, but other movements get affected by it and turn as well
+                linAlg::mat3x4_t rotTiltMat3x4;
+                linAlg::loadRotationZMatrix( rotTiltMat3x4, mCamTiltRadAngle );
+                linAlg::mat3x4_t pivotTranslationMatrix;
+                linAlg::loadTranslationMatrix( pivotTranslationMatrix, linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] } );
+                linAlg::mat3x4_t invPivotTranslationMatrix;
+                linAlg::loadTranslationMatrix( invPivotTranslationMatrix, mRotationPivotOffset );
+
+                //linAlg::mat3x4_t invRotTiltMat3x4;
+                //linAlg::loadRotationZMatrix( invRotTiltMat3x4, mCamTiltRadAngle );
+                //linAlg::applyTransformationToVector( invRotTiltMat3x4, &normMousePtDirs, 1 );
+                //linAlg::loadRotationAroundAxis( mCurrRotMat, normMousePtDirs, radMousePtDir );
+
+                mCurrRotMat = invPivotTranslationMatrix * rotTiltMat3x4 * mCurrRotMat * pivotTranslationMatrix;
+
+                //mCurrRotMat = invPivotTranslationMatrix * mCurrRotMat * pivotTranslationMatrix;
+                //mCurrRotMat = invPivotTranslationMatrix * rotTiltMat3x4 * pivotTranslationMatrix * mCurrRotMat;
+            #endif
+
             }
         }
 
