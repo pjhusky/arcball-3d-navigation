@@ -41,9 +41,14 @@ namespace ArcBall {
         void setMaxTraditionalRotDeg( const float maxTraditionalRotDeg ) { mMaxTraditionalRotDeg = maxTraditionalRotDeg;  }
 
         void setDeadZone( const float deadZone ) { mDeadZone = deadZone; }
+        float getDeadZone() const { return mDeadZone; }
 
         void resetTrafos();
         void setActive( const bool isActive ) { mIsActive = isActive; }
+
+        float getTargetMovement_dx() const { return mTargetMouse_dx; };
+        float getTargetMovement_dy() const { return mTargetMouse_dy; };
+
 
     private:
         linAlg::mat3x4_t mArcRotMat;
