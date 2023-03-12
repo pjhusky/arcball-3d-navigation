@@ -35,7 +35,7 @@ ArcBallControls::ArcBallControls()
 
     setInteractionMode( InteractionModeDesc{ .fullCircle = true, .smooth = true } );
 
-    setDampingFactor( 0.875f );
+    setRotDampingFactor( 0.875f );
     setMouseSensitivity( 0.866f );
     setMaxTraditionalRotDeg( 360.0f ); 
 
@@ -56,12 +56,37 @@ ArcBallControls::ArcBallControls()
 eRetVal ArcBallControls::update( const float deltaTimeSec, 
                                  const float mouseX, 
                                  const float mouseY, 
+                                 const float camDist,
+                                 const linAlg::vec3_t& camPanDelta,
+                                 const float camTiltRadAngle,
                                  const bool LMBpressed, 
                                  const bool RMBpressed, 
                                  const int32_t screenW, 
                                  const int32_t screenH ) {
 
     (void)deltaTimeSec;
+
+    linAlg::mat3_t rolledRefFrameMatT;
+    {
+        linAlg::mat3x4_t camRollMat;
+        linAlg::loadRotationZMatrix( camRollMat, camTiltRadAngle );
+
+        linAlg::mat3_t rolledRefFrameMat;
+        linAlg::vec3_t refX;
+        linAlg::castVector( refX, camRollMat[0] );
+        linAlg::vec3_t refY;
+        linAlg::castVector( refY, camRollMat[1] );
+        linAlg::vec3_t refZ;
+        linAlg::castVector( refZ, camRollMat[2] );
+        rolledRefFrameMat[0] = refX;
+        rolledRefFrameMat[1] = refY;
+        rolledRefFrameMat[2] = refZ;
+
+        linAlg::transpose( rolledRefFrameMatT, rolledRefFrameMat );
+
+        setRefFrameMat( rolledRefFrameMatT );
+    }
+
 
     mCurrMouseX = mouseX;
     mCurrMouseY = mouseY;
@@ -189,18 +214,62 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
         linAlg::multMatrix( mArcRotMat, mCurrRotMat, mPrevRotMat );
     }
 
+
+
+    linAlg::vec3_t zAxis{ 0.0f, 0.0f, 1.0f };
+    linAlg::loadRotationZMatrix( mTiltRotMat, camTiltRadAngle );
+
+#if 1 // works (up to small jumps when resetting pivot anker pos); uses transform from last frame (seems to be okay as well)
+    linAlg::mat3x4_t pivotTranslationMatrix;
+    auto pivotTranslationPos = linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] };
+    linAlg::loadTranslationMatrix( pivotTranslationMatrix, pivotTranslationPos );
+    linAlg::mat3x4_t invPivotTranslationMatrix;
+    auto invPivotTranslationPos = linAlg::vec3_t{ -pivotTranslationPos[0], -pivotTranslationPos[1], -pivotTranslationPos[2] };
+    linAlg::loadTranslationMatrix( invPivotTranslationMatrix, invPivotTranslationPos );
+    mTiltRotMat = invPivotTranslationMatrix * mTiltRotMat * pivotTranslationMatrix;
+#endif
+
+    mViewRotMat = mTiltRotMat * mArcRotMat;
+
+    //const linAlg::mat3x4_t& arcRotMat = arcBallControl.getRotationMatrix();
+    //mViewMatrix3x4 = arcRotMat;
+
+    if (mInteractionModeDesc.smooth) {
+        mPanVector[0] += camPanDelta[0];
+        mPanVector[1] += camPanDelta[1];
+    } else {
+        mPanVector[0] += camPanDelta[0] / ( mPanDampingFactor );
+        mPanVector[1] += camPanDelta[1] / ( mPanDampingFactor );
+        //targetPanDeltaVector[0] = 0.0f;
+        //targetPanDeltaVector[1] = 0.0f;
+    }
+    //const float viewDist = camZoomDist;
+    //linAlg::vec3_t panVec3{ panVector[0], panVector[1], -boundingSphere[3] * viewDist + panVector[2] };
+    linAlg::vec3_t panVec3{ mPanVector[0], mPanVector[1], camDist + mPanVector[2] };
+
+    linAlg::loadTranslationMatrix( mViewTranslationMat, panVec3 );
+
+    //mViewMatrix3x4 = panMat * mViewMatrix3x4;
+    mViewMat = mViewTranslationMat * mViewRotMat;
+
+
+
+    ////////////////////////////
+    // book keeping & updates //
+    ////////////////////////////
+
     mPrevMouseX = mCurrMouseX;
     mPrevMouseY = mCurrMouseY;
 
     if (mInteractionModeDesc.smooth) {
         if (fabsf( mTargetMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetMouse_dx *= getDampingFactor();
+            mTargetMouse_dx *= getRotDampingFactor();
         }
         else {
             mTargetMouse_dx = 0.0f;
         }
         if (fabsf( mTargetMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetMouse_dy *= getDampingFactor();
+            mTargetMouse_dy *= getRotDampingFactor();
         }
         else {
             mTargetMouse_dy = 0.0f;
@@ -213,14 +282,20 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     return eRetVal::OK;
 }
 
-void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat )
-{
+void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat ) {
     mRefFrameMat = refFrameMat;
     linAlg::orthogonalize( mRefFrameMat );
 }
 
 void ArcBallControls::resetTrafos() {
     linAlg::loadIdentityMatrix( mArcRotMat );
+    linAlg::loadIdentityMatrix( mTiltRotMat );
+
+    linAlg::loadIdentityMatrix( mViewRotMat );
+    linAlg::loadIdentityMatrix( mViewTranslationMat );
+    linAlg::loadIdentityMatrix( mViewMat );
+
+    mPanVector = { 0.0f, 0.0f, 0.0f };
 
     linAlg::loadIdentityMatrix( mCurrRotMat );
     linAlg::loadIdentityMatrix( mPrevRotMat );

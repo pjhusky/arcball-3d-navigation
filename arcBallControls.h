@@ -21,17 +21,25 @@ namespace ArcBall {
         eRetVal update( const float deltaTimeSec, 
                         const float mouseX, 
                         const float mouseY,     
+                        const float camDist,
+                        const linAlg::vec3_t& camPanDelta,
+                        const float camTiltRadAngle,
                         const bool LMBpressed, 
                         const bool RMBpressed, 
                         const int32_t screenW, 
                         const int32_t screenH );
-        const linAlg::mat3x4_t& getRotationMatrix() const { return mArcRotMat; }
+        
+        const linAlg::mat3x4_t& getRotationMatrix() const { return mViewRotMat; }
+        const linAlg::mat3x4_t& getViewMatrix() const { return mViewMat; }
 
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
         void setRotationPivotOffset( const linAlg::vec3_t& offset ) { mRotationPivotOffset = offset; }
 
-        void setDampingFactor( const float dampingFactor ) { mDampingFactor = dampingFactor; }
-        float getDampingFactor() const { return mDampingFactor; }
+        void setRotDampingFactor( const float dampingFactor ) { mRotDampingFactor = dampingFactor; }
+        float getRotDampingFactor() const { return mRotDampingFactor; }
+
+        void setPanDampingFactor( const float dampingFactor ) { mPanDampingFactor = dampingFactor; }
+        float getPanDampingFactor() const { return mPanDampingFactor; }
 
         void setMouseSensitivity( const float mouseSensitivity ) { mMouseSensitivity = mouseSensitivity; }
 
@@ -52,6 +60,12 @@ namespace ArcBall {
 
     private:
         linAlg::mat3x4_t mArcRotMat;
+        linAlg::mat3x4_t mTiltRotMat;
+        linAlg::mat3x4_t mViewRotMat;
+        linAlg::mat3x4_t mViewTranslationMat;
+        linAlg::mat3x4_t mViewMat;
+
+        linAlg::vec3_t   mPanVector;
         
         // only for clamp mouse interaction ("traditional" arc ball)    
         linAlg::mat3x4_t mCurrRotMat;
@@ -70,7 +84,8 @@ namespace ArcBall {
         float mTargetMouse_dx;
         float mTargetMouse_dy;
         float mMouseSensitivity;
-        float mDampingFactor;
+        float mRotDampingFactor;
+        float mPanDampingFactor;
         float mDeadZone;
 
         float mMaxTraditionalRotDeg; // 180.0f for traditional arcBall, 360.0f for one full rotation per mouse-drag (stronger movement)
