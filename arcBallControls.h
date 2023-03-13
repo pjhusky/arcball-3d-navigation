@@ -28,6 +28,12 @@ namespace ArcBall {
                         const bool RMBpressed, 
                         const int32_t screenW, 
                         const int32_t screenH );
+
+        // "view-matrix" part
+        void calcViewWithoutArcMatFrameMatrices( const float& camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float& camDist );
+
+        // "model-matrix" part
+        void calcArcMat( const float& camTiltRadAngle, const float& mouseX, const float& mouseY, const int32_t& screenW, const int32_t& screenH, const bool& LMBpressed );
         
         const linAlg::mat3x4_t& getArcRotMat() const { return mArcRotMat; } // model matrix part - can be thought of as rotated object
         const linAlg::mat3x4_t& getTiltRotMat() const { return mTiltRotMat; }

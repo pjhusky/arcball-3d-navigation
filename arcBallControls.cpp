@@ -66,6 +66,72 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
 
     (void)deltaTimeSec;
 
+    calcArcMat( camTiltRadAngle, mouseX, mouseY, screenW, screenH, LMBpressed );
+
+
+    calcViewWithoutArcMatFrameMatrices( camTiltRadAngle, camPanDelta, camDist );
+
+
+    ////////////////////////////
+    // book keeping & updates //
+    ////////////////////////////
+
+    mPrevMouseX = mCurrMouseX;
+    mPrevMouseY = mCurrMouseY;
+
+    if (mInteractionModeDesc.smooth) {
+        if (fabsf( mTargetMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+            mTargetMouse_dx *= getRotDampingFactor();
+        }
+        else {
+            mTargetMouse_dx = 0.0f;
+        }
+        if (fabsf( mTargetMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+            mTargetMouse_dy *= getRotDampingFactor();
+        }
+        else {
+            mTargetMouse_dy = 0.0f;
+        }
+    } /*else {
+        mTargetMouse_dx = 0.0f;
+        mTargetMouse_dy = 0.0f;
+    }*/
+
+    return eRetVal::OK;
+}
+
+void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float& camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float& camDist )
+{
+    linAlg::loadRotationZMatrix( mTiltRotMat, camTiltRadAngle );
+
+#if 1 // works (up to small jumps when resetting pivot anker pos); uses transform from last frame (seems to be okay as well)
+    linAlg::mat3x4_t pivotTranslationMatrix;
+    auto pivotTranslationPos = linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] };
+    linAlg::loadTranslationMatrix( pivotTranslationMatrix, pivotTranslationPos );
+    linAlg::mat3x4_t invPivotTranslationMatrix;
+    auto invPivotTranslationPos = linAlg::vec3_t{ -pivotTranslationPos[0], -pivotTranslationPos[1], -pivotTranslationPos[2] };
+    linAlg::loadTranslationMatrix( invPivotTranslationMatrix, invPivotTranslationPos );
+    mTiltRotMat = invPivotTranslationMatrix * mTiltRotMat * pivotTranslationMatrix;
+#endif
+    mViewRotMat = mTiltRotMat * mArcRotMat;
+
+    if (mInteractionModeDesc.smooth) {
+        mPanVector[0] += camPanDelta[0];
+        mPanVector[1] += camPanDelta[1];
+    }
+    else {
+        mPanVector[0] += camPanDelta[0] / (mPanDampingFactor);
+        mPanVector[1] += camPanDelta[1] / (mPanDampingFactor);
+    }
+    linAlg::vec3_t panVec3{ mPanVector[0], mPanVector[1], camDist + mPanVector[2] };
+
+    linAlg::loadTranslationMatrix( mViewTranslationMat, panVec3 );
+
+    mViewMat = mViewTranslationMat * mViewRotMat;
+}
+
+void ArcBall::ArcBallControls::calcArcMat( const float& camTiltRadAngle, const float& mouseX, const float& mouseY, const int32_t& screenW, const int32_t& screenH, const bool& LMBpressed )
+{
     linAlg::mat3_t rolledRefFrameMatT;
     {
         linAlg::mat3x4_t camRollMat;
@@ -90,22 +156,23 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
 
     mCurrMouseX = mouseX;
     mCurrMouseY = mouseY;
-    const float mouse_dx = ( mIsActive ) ? (mCurrMouseX - mPrevMouseX) : 0.0f;
-    const float mouse_dy = ( mIsActive ) ? (mCurrMouseY - mPrevMouseY) : 0.0f;
+    const float mouse_dx = (mIsActive) ? (mCurrMouseX - mPrevMouseX) : 0.0f;
+    const float mouse_dy = (mIsActive) ? (mCurrMouseY - mPrevMouseY) : 0.0f;
 
     if (mInteractionModeDesc.smooth) {
         if (mLMBdown) {
             mTargetMouse_dx += mouse_dx * mMouseSensitivity; // * deltaTimeSec;
             mTargetMouse_dy += mouse_dy * mMouseSensitivity; // * deltaTimeSec;
         }
-    } else {
+    }
+    else {
         mTargetMouse_dx = mouse_dx * mMouseSensitivity;
         mTargetMouse_dy = mouse_dy * mMouseSensitivity;
     }
 
     if (mInteractionModeDesc.fullCircle == true) { // continuous ArcBall rotation with grabbed mouse
 
-        if ( ( mInteractionModeDesc.smooth && sqrtf( mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy ) > mDeadZone ) || mLMBdown ) {
+        if ((mInteractionModeDesc.smooth && sqrtf( mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy ) > mDeadZone) || mLMBdown) {
             //printf( "LMB is down\n" );
 
             // always reset start to center of ArcBall
@@ -116,13 +183,13 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
 
             linAlg::normalize( mCurrMouseNDC );
             linAlg::normalize( mStartMouseNDC );
-            
+
             float cosAngle = linAlg::dot( mStartMouseNDC, mCurrMouseNDC );
             assert( cosAngle > 0.0 );
-            if (cosAngle < 1.0f - std::numeric_limits<float>::epsilon() ) {
+            if (cosAngle < 1.0f - std::numeric_limits<float>::epsilon()) {
                 const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
                 const float radMousePtDir = acosf( cosMousePtDirs );
-                if (fabsf( radMousePtDir > mDeadZone )) 
+                if (fabsf( radMousePtDir > mDeadZone ))
                 {
                     linAlg::vec3_t normMousePtDirs;
                     linAlg::cross( normMousePtDirs, mStartMouseNDC, mCurrMouseNDC );
@@ -147,8 +214,6 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
                     linAlg::mat3x4_t tmpLastRotMat;
                     linAlg::multMatrix( tmpLastRotMat, rotArcBallDeltaMat, mArcRotMat );
                     mArcRotMat = tmpLastRotMat;
-
-                    //linAlg::orthogonalize( mArcRotMat );
                 }
             }
         }
@@ -161,7 +226,8 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
             //printf( "LMB released\n" );
             mLMBdown = false;
         }
-    } else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
+    }
+    else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
         if (mLMBdown) {
             //printf( "LMB is down\n" );
             ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
@@ -175,7 +241,7 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
             float cosAngle = linAlg::dot( mStartMouseNDC, mCurrMouseNDC );
             if (cosAngle < 1.0f - std::numeric_limits<float>::epsilon() * 100.0f) {
                 const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
-                const float radMousePtDir = acosf( cosMousePtDirs ) * ( mMaxTraditionalRotDeg * ( 1.0f / 180.0f ) );
+                const float radMousePtDir = acosf( cosMousePtDirs ) * (mMaxTraditionalRotDeg * (1.0f / 180.0f));
                 linAlg::vec3_t normMousePtDirs;
                 linAlg::cross( normMousePtDirs, mStartMouseNDC, mCurrMouseNDC );
                 linAlg::normalize( normMousePtDirs );
@@ -213,62 +279,6 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
 
         linAlg::multMatrix( mArcRotMat, mCurrRotMat, mPrevRotMat );
     }
-
-
-    linAlg::vec3_t zAxis{ 0.0f, 0.0f, 1.0f };
-    linAlg::loadRotationZMatrix( mTiltRotMat, camTiltRadAngle );
-
-#if 1 // works (up to small jumps when resetting pivot anker pos); uses transform from last frame (seems to be okay as well)
-    linAlg::mat3x4_t pivotTranslationMatrix;
-    auto pivotTranslationPos = linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] };
-    linAlg::loadTranslationMatrix( pivotTranslationMatrix, pivotTranslationPos );
-    linAlg::mat3x4_t invPivotTranslationMatrix;
-    auto invPivotTranslationPos = linAlg::vec3_t{ -pivotTranslationPos[0], -pivotTranslationPos[1], -pivotTranslationPos[2] };
-    linAlg::loadTranslationMatrix( invPivotTranslationMatrix, invPivotTranslationPos );
-    mTiltRotMat = invPivotTranslationMatrix * mTiltRotMat * pivotTranslationMatrix;
-#endif
-    mViewRotMat = mTiltRotMat * mArcRotMat;
-
-    if (mInteractionModeDesc.smooth) {
-        mPanVector[0] += camPanDelta[0];
-        mPanVector[1] += camPanDelta[1];
-    } else {
-        mPanVector[0] += camPanDelta[0] / ( mPanDampingFactor );
-        mPanVector[1] += camPanDelta[1] / ( mPanDampingFactor );
-    }
-    linAlg::vec3_t panVec3{ mPanVector[0], mPanVector[1], camDist + mPanVector[2] };
-
-    linAlg::loadTranslationMatrix( mViewTranslationMat, panVec3 );
-
-    mViewMat = mViewTranslationMat * mViewRotMat;
-
-
-    ////////////////////////////
-    // book keeping & updates //
-    ////////////////////////////
-
-    mPrevMouseX = mCurrMouseX;
-    mPrevMouseY = mCurrMouseY;
-
-    if (mInteractionModeDesc.smooth) {
-        if (fabsf( mTargetMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetMouse_dx *= getRotDampingFactor();
-        }
-        else {
-            mTargetMouse_dx = 0.0f;
-        }
-        if (fabsf( mTargetMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetMouse_dy *= getRotDampingFactor();
-        }
-        else {
-            mTargetMouse_dy = 0.0f;
-        }
-    } /*else {
-        mTargetMouse_dx = 0.0f;
-        mTargetMouse_dy = 0.0f;
-    }*/
-
-    return eRetVal::OK;
 }
 
 void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat ) {
@@ -277,6 +287,7 @@ void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat ) {
 }
 
 void ArcBallControls::resetTrafos() {
+    
     linAlg::loadIdentityMatrix( mArcRotMat );
     linAlg::loadIdentityMatrix( mTiltRotMat );
 
@@ -288,7 +299,6 @@ void ArcBallControls::resetTrafos() {
 
     linAlg::loadIdentityMatrix( mCurrRotMat );
     linAlg::loadIdentityMatrix( mPrevRotMat );
-
     linAlg::loadIdentityMatrix( mRefFrameMat );
 
     mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
