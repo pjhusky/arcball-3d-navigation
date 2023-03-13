@@ -47,7 +47,8 @@ namespace ArcBall {
 
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
         
-        void setRotationPivotOffset( const linAlg::vec3_t& offset ) { mRotationPivotOffset = offset; }
+        //void setRotationPivotOffset( const linAlg::vec3_t& offset ) { mRotationPivotOffset = offset; }
+        void setRotationPivotWS( const linAlg::vec3_t& offset );
         linAlg::vec3_t getRotationPivotOffset() { return mRotationPivotOffset; }
 
         void seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWS, const float& camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float& camDist );
