@@ -215,7 +215,6 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     }
 
 
-
     linAlg::vec3_t zAxis{ 0.0f, 0.0f, 1.0f };
     linAlg::loadRotationZMatrix( mTiltRotMat, camTiltRadAngle );
 
@@ -228,11 +227,7 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     linAlg::loadTranslationMatrix( invPivotTranslationMatrix, invPivotTranslationPos );
     mTiltRotMat = invPivotTranslationMatrix * mTiltRotMat * pivotTranslationMatrix;
 #endif
-
     mViewRotMat = mTiltRotMat * mArcRotMat;
-
-    //const linAlg::mat3x4_t& arcRotMat = arcBallControl.getRotationMatrix();
-    //mViewMatrix3x4 = arcRotMat;
 
     if (mInteractionModeDesc.smooth) {
         mPanVector[0] += camPanDelta[0];
@@ -240,18 +235,12 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     } else {
         mPanVector[0] += camPanDelta[0] / ( mPanDampingFactor );
         mPanVector[1] += camPanDelta[1] / ( mPanDampingFactor );
-        //targetPanDeltaVector[0] = 0.0f;
-        //targetPanDeltaVector[1] = 0.0f;
     }
-    //const float viewDist = camZoomDist;
-    //linAlg::vec3_t panVec3{ panVector[0], panVector[1], -boundingSphere[3] * viewDist + panVector[2] };
     linAlg::vec3_t panVec3{ mPanVector[0], mPanVector[1], camDist + mPanVector[2] };
 
     linAlg::loadTranslationMatrix( mViewTranslationMat, panVec3 );
 
-    //mViewMatrix3x4 = panMat * mViewMatrix3x4;
     mViewMat = mViewTranslationMat * mViewRotMat;
-
 
 
     ////////////////////////////

@@ -29,11 +29,20 @@ namespace ArcBall {
                         const int32_t screenW, 
                         const int32_t screenH );
         
-        const linAlg::mat3x4_t& getRotationMatrix() const { return mViewRotMat; }
+        const linAlg::mat3x4_t& getArcRotMat() const { return mArcRotMat; } // model matrix part - can be thought of as rotated object
+        const linAlg::mat3x4_t& getTiltRotMat() const { return mTiltRotMat; }
+        const linAlg::mat3x4_t& getViewRotMat() const { return mViewRotMat; }
+        const linAlg::mat3x4_t& getViewTranslationMat() const { return mViewTranslationMat; }
+        
         const linAlg::mat3x4_t& getViewMatrix() const { return mViewMat; }
 
+        void addPanDelta( const linAlg::vec3_t& delta ) { mPanVector = mPanVector + delta; }
+        
+
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
+        
         void setRotationPivotOffset( const linAlg::vec3_t& offset ) { mRotationPivotOffset = offset; }
+        linAlg::vec3_t getRotationPivotOffset() { return mRotationPivotOffset; }
 
         void setRotDampingFactor( const float dampingFactor ) { mRotDampingFactor = dampingFactor; }
         float getRotDampingFactor() const { return mRotDampingFactor; }
