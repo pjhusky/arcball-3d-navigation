@@ -23,6 +23,15 @@ void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC
     // https://www.xarg.org/2021/07/trackball-rotation-using-quaternions/
     mCurrMouseNDC[2] = (currX2 + currY2 <= 0.5f) ? sqrtf( 1.0f - currX2 - currY2 ) : 0.5f / (sqrtf( currX2 + currY2 ));
 
+    //if (currX2 + currY2 < 0.5f) {
+    //    mCurrMouseNDC[2] = sqrtf( 1.0f - currX2 - currY2 );
+    //} else if ( currX2 + currY2 > 0.0f ) {
+    //    mCurrMouseNDC[2] = 0.5f / sqrtf( currX2 + currY2 );
+    //} else {
+    //    printf( "ouch!\n" );
+    //}
+    
+
     linAlg::normalize( mCurrMouseNDC );
 }
 
@@ -55,10 +64,14 @@ ArcBallControls::ArcBallControls()
 
 
 void ArcBallControls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) { 
-    //mRotationPivotOffset = offset; 
+
+#if 1// STABLE!!!
+    mRotationPivotOffset = pivotWSIn;  
+#else // UNSTABLE!!!
     linAlg::vec3_t pivotWS = pivotWSIn;
     linAlg::applyTransformationToPoint( getArcRotMat(), &pivotWS, 1 );
     mRotationPivotOffset = pivotWS;
+#endif
 }
 
 void ArcBallControls::seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWSIn, const float& camTiltRadAngle, const float& camDist ) {
@@ -95,10 +108,32 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
 
     (void)deltaTimeSec;
 
-    calcArcMat( camTiltRadAngle, mouseX, mouseY, screenW, screenH, LMBpressed );
+    
+    mCurrMouseX = mouseX;
+    mCurrMouseY = mouseY;
+    
+    const float mouse_dx = (mIsActive) ? (mCurrMouseX - mPrevMouseX) : 0.0f;
+    const float mouse_dy = (mIsActive) ? (mCurrMouseY - mPrevMouseY) : 0.0f;
+
+    if (fabsf( mouse_dx ) > 300.0f) {
+        printf( "x reiszt ab %f!\n", mouse_dx );
+    }
+    if (fabsf( mouse_dy ) > 300.0f) {
+        printf( "y reiszt ab %f!\n", mouse_dy );
+    }
+
+    if (!mIsActive) {
+        mTargetMouse_dx = 0.0f;
+        mTargetMouse_dy = 0.0f;
+    }
+
+    calcArcMat( camTiltRadAngle, mouse_dx, mouse_dy, screenW, screenH, LMBpressed );
 
     calcViewWithoutArcMatFrameMatrices( camTiltRadAngle, camPanDelta, camDist );
 
+    mViewRotMat = mViewRotMat * mArcRotMat;
+    mViewMat = mViewMat * mArcRotMat;
+    
 
     ////////////////////////////
     // book keeping & updates //
@@ -128,7 +163,7 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     return eRetVal::OK;
 }
 
-void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float& camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float& camDist )
+void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float camDist )
 {
     linAlg::loadRotationZMatrix( mTiltRotMat, camTiltRadAngle );
 
@@ -141,7 +176,8 @@ void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float& 
     linAlg::loadTranslationMatrix( invPivotTranslationMatrix, invPivotTranslationPos );
     mTiltRotMat = invPivotTranslationMatrix * mTiltRotMat * pivotTranslationMatrix;
 #endif
-    mViewRotMat = mTiltRotMat * mArcRotMat;
+    //mViewRotMat = mTiltRotMat * mArcRotMat;
+    mViewRotMat = mTiltRotMat;
 
     if (mInteractionModeDesc.smooth) {
         mPanVector[0] += camPanDelta[0];
@@ -158,7 +194,7 @@ void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float& 
     mViewMat = mViewTranslationMat * mViewRotMat;
 }
 
-void ArcBall::ArcBallControls::calcArcMat( const float& camTiltRadAngle, const float& mouseX, const float& mouseY, const int32_t& screenW, const int32_t& screenH, const bool& LMBpressed )
+void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const float mouse_dx, const float mouse_dy, const int32_t screenW, const int32_t screenH, const bool LMBpressed )
 {
     linAlg::mat3_t rolledRefFrameMatT;
     {
@@ -180,12 +216,6 @@ void ArcBall::ArcBallControls::calcArcMat( const float& camTiltRadAngle, const f
 
         setRefFrameMat( rolledRefFrameMatT );
     }
-
-
-    mCurrMouseX = mouseX;
-    mCurrMouseY = mouseY;
-    const float mouse_dx = (mIsActive) ? (mCurrMouseX - mPrevMouseX) : 0.0f;
-    const float mouse_dy = (mIsActive) ? (mCurrMouseY - mPrevMouseY) : 0.0f;
 
     if (mInteractionModeDesc.smooth) {
         if (mLMBdown) {
@@ -260,18 +290,40 @@ void ArcBall::ArcBallControls::calcArcMat( const float& camTiltRadAngle, const f
             //printf( "LMB is down\n" );
             ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
 
+            //if (linAlg::len( mCurrMouseNDC ) <= std::numeric_limits<float>::epsilon() * 100.0f ) {
+            //    printf( "ouch2!\n" );
+            //}
+            //if (linAlg::len( mStartMouseNDC ) <= std::numeric_limits<float>::epsilon() * 100.0f ) {
+            //    printf( "ouch3!\n" );
+            //}
+
             linAlg::normalize( mCurrMouseNDC );
             linAlg::normalize( mStartMouseNDC );
 
             linAlg::applyTransformationToPoint( mRefFrameMat, &mCurrMouseNDC, 1 );
+
+            //if (linAlg::len( mCurrMouseNDC ) <= std::numeric_limits<float>::epsilon() * 100.0f ) {
+            //    printf( "ouch4!\n" );
+            //}
+
             linAlg::normalize( mCurrMouseNDC );
+
 
             float cosAngle = linAlg::dot( mStartMouseNDC, mCurrMouseNDC );
             if (cosAngle < 1.0f - std::numeric_limits<float>::epsilon() * 100.0f) {
-                const float cosMousePtDirs = linAlg::minimum( 1.0f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
+                const float cosMousePtDirs = linAlg::minimum( 0.9999999f, cosAngle ); // <= 1.0 so that arccos doesn't freak out
                 const float radMousePtDir = acosf( cosMousePtDirs ) * (mMaxTraditionalRotDeg * (1.0f / 180.0f));
                 linAlg::vec3_t normMousePtDirs;
                 linAlg::cross( normMousePtDirs, mStartMouseNDC, mCurrMouseNDC );
+                //if (linAlg::len( mStartMouseNDC - mCurrMouseNDC ) < std::numeric_limits<float>::epsilon() * 100.0f ) {
+                //    printf( "ouch 5!\n" );
+                //}
+                //if (linAlg::len( normMousePtDirs ) < std::numeric_limits<float>::epsilon() * 100.0f ) {
+                //    printf( "ouch 6!\n" );
+                //}
+                //if (fabsf( radMousePtDir ) < std::numeric_limits<float>::epsilon() * 100.0f ) {
+                //    printf( "ouch 7!\n" );
+                //}
                 linAlg::normalize( normMousePtDirs );
 
                 // bring rotation vector into ref frame
