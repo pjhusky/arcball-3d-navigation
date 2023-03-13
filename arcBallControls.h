@@ -50,6 +50,8 @@ namespace ArcBall {
         void setRotationPivotOffset( const linAlg::vec3_t& offset ) { mRotationPivotOffset = offset; }
         linAlg::vec3_t getRotationPivotOffset() { return mRotationPivotOffset; }
 
+        void seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWS, const float& camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float& camDist );
+
         void setRotDampingFactor( const float dampingFactor ) { mRotDampingFactor = dampingFactor; }
         float getRotDampingFactor() const { return mRotDampingFactor; }
 

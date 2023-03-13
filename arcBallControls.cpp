@@ -53,6 +53,41 @@ ArcBallControls::ArcBallControls()
     mCurrMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
 }
 
+
+void ArcBallControls::seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWS, const float& camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float& camDist ) {
+    linAlg::vec3_t prevRefPtES{ 0.0f, 0.0f, 0.0f };
+    auto viewWithoutArcMat = getViewTranslationMat() * getTiltRotMat();
+
+    linAlg::applyTransformationToPoint( viewWithoutArcMat, &prevRefPtES, 1 );
+    //screenToWorld( rotPivotPosWS, currMouseX, currMouseY, viewWithoutArcMat, mProjMatrix, fbWidth, fbHeight );
+
+    setRotationPivotOffset( pivotWS ); // works up to tilting
+
+
+    //arcBallControl.update(  
+    //    0.0f, //frameDelta, 
+    //    currMouseX, 
+    //    currMouseY, 
+    //    -boundingSphere[3] * camZoomDist, 
+    //    {0.0f,0.0f,0.0f}, //targetPanDeltaVector,
+    //    camTiltRadAngle, 
+    //    false, //leftMouseButtonPressed, 
+    //    false, //rightMouseButtonPressed, 
+    //    fbWidth, 
+    //    fbHeight );
+
+    calcViewWithoutArcMatFrameMatrices( camTiltRadAngle, camPanDelta, camDist );
+
+    linAlg::vec3_t newRefPtES{ 0.0f, 0.0f, 0.0f };
+    //auto 
+    viewWithoutArcMat = getViewTranslationMat() * getTiltRotMat();
+    linAlg::applyTransformationToPoint( viewWithoutArcMat, &newRefPtES, 1 );
+
+    auto panDeltaPivotCompensation = prevRefPtES - newRefPtES;
+    addPanDelta( panDeltaPivotCompensation );
+
+}
+
 eRetVal ArcBallControls::update( const float deltaTimeSec, 
                                  const float mouseX, 
                                  const float mouseY, 
