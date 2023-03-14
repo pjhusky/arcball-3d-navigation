@@ -359,6 +359,51 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
     }
 }
 
+void ArcBall::ArcBallControls::setViewMatrix( const linAlg::mat3x4_t& viewMatrix ) {
+
+    //auto safePivotPos = mRotationPivotPosArcSpaceWS;
+
+    resetTrafos();
+
+    mViewMat = viewMatrix;
+
+    // extract only rotational part
+    linAlg::mat3x4_t rotOnlyMat = viewMatrix;
+    rotOnlyMat[0][3] = 0.0f;
+    rotOnlyMat[1][3] = 0.0f;
+    rotOnlyMat[2][3] = 0.0f;
+    
+    linAlg::mat3_t rotOnlyMat3;
+    linAlg::castMatrix( rotOnlyMat3, rotOnlyMat );
+    linAlg::mat3_t invRotOnlyMat3;
+    linAlg::transpose(invRotOnlyMat3, rotOnlyMat3);
+    //mRefFrameMat = invRotOnlyMat3;
+
+
+    //linAlg::mat3x4_t invRotOnlyMat3x4;
+    //linAlg::loadIdentityMatrix( invRotOnlyMat3x4 );
+    //linAlg::vec4_t v4;
+    //linAlg::castVector( v4, invRotOnlyMat3[0] );
+    //invRotOnlyMat3x4[0] = v4;
+    //linAlg::castVector( v4, invRotOnlyMat3[1] );
+    //invRotOnlyMat3x4[1] = v4;
+    //linAlg::castVector( v4, invRotOnlyMat3[2] );
+    //invRotOnlyMat3x4[2] = v4;
+
+    //mTiltRotMat = rotOnlyMat;
+    //mArcRotMat = rotOnlyMat;
+
+    mCurrRotMat = rotOnlyMat;
+    //mCurrRotMat = invRotOnlyMat3x4;
+    
+
+
+    mPanVector = { viewMatrix[0][3], viewMatrix[1][3], viewMatrix[2][3] };
+
+
+    //mRotationPivotPosArcSpaceWS = safePivotPos;
+}
+
 void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat ) {
     mRefFrameMat = refFrameMat;
     linAlg::orthogonalize( mRefFrameMat );

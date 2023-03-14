@@ -60,6 +60,7 @@ namespace ArcBall {
         const linAlg::mat3x4_t& getViewTranslationMat() const { return mViewTranslationMat; }
         
         const linAlg::mat3x4_t& getViewMatrix() const { return mViewMat; }
+        void setViewMatrix( const linAlg::mat3x4_t& viewMatrix );
 
         void addPanDelta( const linAlg::vec3_t& delta ) { mPanVector = mPanVector + delta; }
         
