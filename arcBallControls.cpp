@@ -57,7 +57,7 @@ ArcBallControls::ArcBallControls()
 void ArcBallControls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) { 
 
 #if 0 // STABLE!!!
-    mRotationPivotPosArcSpaceWS = pivotWSIn;  
+    mRotationPivotPosArcSpaceWS = pivotWSIn;
 #else // UNSTABLE!!!
     if (linAlg::dist( pivotWSIn, mRotationPivotPosArcSpaceWS ) <= std::numeric_limits<float>::epsilon() * 100.0f) { return; }
     linAlg::vec3_t pivotWS = pivotWSIn;
@@ -65,17 +65,44 @@ void ArcBallControls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) {
     mRotationPivotPosArcSpaceWS = pivotWS;
 #endif
 }
+void ArcBall::ArcBallControls::setRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS ) {
+    mRotationPivotPosArcSpaceWS = pivotArcSpaceWS;
+}
+
+
+linAlg::vec3_t ArcBall::ArcBallControls::getRotationPivotOffsetArcSpaceWS() { 
+    return mRotationPivotPosArcSpaceWS; 
+}
+linAlg::vec3_t ArcBall::ArcBallControls::getRotationPivotOffsetWS() { 
+    linAlg::mat4_t arcRotMat4;
+    linAlg::castMatrix( arcRotMat4, getArcRotMat() );
+    linAlg::mat4_t invArcRotMat4;
+    linAlg::inverse( invArcRotMat4, arcRotMat4 );
+    
+    linAlg::vec4_t pivotWS{ mRotationPivotPosArcSpaceWS[0], mRotationPivotPosArcSpaceWS[1], mRotationPivotPosArcSpaceWS[2], 1.0f };
+
+    linAlg::applyTransformationToPoint( invArcRotMat4, &pivotWS, 1 );
+    return linAlg::vec3_t{ pivotWS[0], pivotWS[1], pivotWS[2] };
+}
 
 void ArcBallControls::seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWSIn, const float& camTiltRadAngle, const float& camDist ) {
-
     setRotationPivotWS( pivotWSIn );
+    commonSeamlessSetRotationPivotWS( camTiltRadAngle, camDist );
+}
 
+void ArcBallControls::seamlessSetRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS, const float& camTiltRadAngle, const float& camDist ) {
+    setRotationPivotArcSpaceWS( pivotArcSpaceWS );
+    commonSeamlessSetRotationPivotWS( camTiltRadAngle, camDist );
+}
+
+void ArcBall::ArcBallControls::commonSeamlessSetRotationPivotWS( const float& camTiltRadAngle, const float& camDist )
+{
     linAlg::vec3_t prevRefPtES{ 0.0f, 0.0f, 0.0f };
     auto viewWithoutArcMat = getViewTranslationMat() * getTiltRotMat();
 
     linAlg::applyTransformationToPoint( viewWithoutArcMat, &prevRefPtES, 1 );
 
-    calcViewWithoutArcMatFrameMatrices( camTiltRadAngle, {0.0f, 0.0f, 0.0f}, camDist );
+    calcViewWithoutArcMatFrameMatrices( camTiltRadAngle, { 0.0f, 0.0f, 0.0f }, camDist );
 
     linAlg::vec3_t newRefPtES{ 0.0f, 0.0f, 0.0f };
     //auto 
@@ -84,7 +111,6 @@ void ArcBallControls::seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWSI
 
     auto panDeltaPivotCompensation = prevRefPtES - newRefPtES;
     addPanDelta( panDeltaPivotCompensation );
-
 }
 
 eRetVal ArcBallControls::update( const float deltaTimeSec, 

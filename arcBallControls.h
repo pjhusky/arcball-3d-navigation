@@ -66,10 +66,16 @@ namespace ArcBall {
 
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
         
-        void setRotationPivotWS( const linAlg::vec3_t& offset );
-        linAlg::vec3_t getRotationPivotOffset() { return mRotationPivotPosArcSpaceWS; }
+        void setRotationPivotWS( const linAlg::vec3_t& pivotWSIn );
+        void setRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS ); // Model-matrix part more stable, but less easy to use from the outside
+
+        linAlg::vec3_t getRotationPivotOffsetArcSpaceWS();
+        linAlg::vec3_t getRotationPivotOffsetWS();
 
         void seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWS, const float& camTiltRadAngle, const float& camDist );
+        void seamlessSetRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS, const float& camTiltRadAngle, const float& camDist );
+        void commonSeamlessSetRotationPivotWS( const float& camTiltRadAngle, const float& camDist );
+        //void seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWS, const float& camTiltRadAngle, const float& camDist );
 
         void setRotDampingFactor( const float dampingFactor ) { mRotDampingFactor = dampingFactor; }
         float getRotDampingFactor() const { return mRotDampingFactor; }
