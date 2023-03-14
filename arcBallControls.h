@@ -1,6 +1,25 @@
 #ifndef _ARCBALLCONTROLS_H_9ec4f00a_2117_4578_937e_9f4fb94dc759
 #define _ARCBALLCONTROLS_H_9ec4f00a_2117_4578_937e_9f4fb94dc759
 
+// Short Explanation about coord spaces to use
+//  mViewMat = mViewTranslationMat * mTiltRotMat * mArcRotMat;
+//  where we can shorthand mViewRotMat = mTiltRotMat * mArcRotMat;
+//
+// i refer to the space after arcRot matrix is applied to as "ArcSpaceWS"
+// it is like a model matrix still (the very first transformation in the view transform)
+//
+// setting the pivot from the outside is preferably exposed as expecting a WS position (preferably wrt ease of use and clarity of the interface to the ArcBall)
+// however, we actually need the pivot pos to be in ArcSpaceWS
+// now, setting the pivot often would mean that the arcRot matrix is applied often and that can cause float-wobble 
+// where the object starts oscillating wildly and just goes off to some crazy dist
+// for this reason we skip identical re-sets of pivot pos
+// when picking a new pivot on a model surface from screen and transforming to "world", instead of taking
+// {mViewTranslationMat * mTiltRotMat * mArcRotMat}^(-1)  ... the inverse of the full view matrix transform which really goes to WS
+// we can just use 
+// {mViewTranslationMat * mTiltRotMat}^(-1) ... to "only" go to ArcSpaceWS => this space we don't need to transform the point that is passed in all the time from WS to ArcSpaceWS
+// as we already expect it to be in ArcSpaceWS, whereas in the first version with the clean interface, we get the true WS, and apply the arcRot matrix to get the pos to ArcSpaceWS
+
+
 
 #include "eRetVal_ArcBall.h"
 #include "../math/linAlg.h" // TODO: can we make it work like this: "#include <linAlg.h>"
