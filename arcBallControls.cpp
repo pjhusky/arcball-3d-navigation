@@ -57,12 +57,12 @@ ArcBallControls::ArcBallControls()
 void ArcBallControls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) { 
 
 #if 0 // STABLE!!!
-    mRotationPivotOffset = pivotWSIn;  
+    mRotationPivotPosArcSpaceWS = pivotWSIn;  
 #else // UNSTABLE!!!
-    if (linAlg::dist( pivotWSIn, mRotationPivotOffset ) <= std::numeric_limits<float>::epsilon() * 100.0f) { return; }
+    if (linAlg::dist( pivotWSIn, mRotationPivotPosArcSpaceWS ) <= std::numeric_limits<float>::epsilon() * 100.0f) { return; }
     linAlg::vec3_t pivotWS = pivotWSIn;
     linAlg::applyTransformationToPoint( getArcRotMat(), &pivotWS, 1 );
-    mRotationPivotOffset = pivotWS;
+    mRotationPivotPosArcSpaceWS = pivotWS;
 #endif
 }
 
@@ -161,7 +161,7 @@ void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float c
 
 #if 1 // works (up to small jumps when resetting pivot anker pos); uses transform from last frame (seems to be okay as well)
     linAlg::mat3x4_t pivotTranslationMatrix;
-    auto pivotTranslationPos = linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] };
+    auto pivotTranslationPos = linAlg::vec3_t{ -mRotationPivotPosArcSpaceWS[0], -mRotationPivotPosArcSpaceWS[1], -mRotationPivotPosArcSpaceWS[2] };
     linAlg::loadTranslationMatrix( pivotTranslationMatrix, pivotTranslationPos );
     linAlg::mat3x4_t invPivotTranslationMatrix;
     auto invPivotTranslationPos = linAlg::vec3_t{ -pivotTranslationPos[0], -pivotTranslationPos[1], -pivotTranslationPos[2] };
@@ -255,9 +255,9 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
 
                 #if 1
                     linAlg::mat3x4_t pivotTranslationMatrix;
-                    linAlg::loadTranslationMatrix( pivotTranslationMatrix, linAlg::vec3_t{ -mRotationPivotOffset[0], -mRotationPivotOffset[1], -mRotationPivotOffset[2] } );
+                    linAlg::loadTranslationMatrix( pivotTranslationMatrix, linAlg::vec3_t{ -mRotationPivotPosArcSpaceWS[0], -mRotationPivotPosArcSpaceWS[1], -mRotationPivotPosArcSpaceWS[2] } );
                     linAlg::mat3x4_t invPivotTranslationMatrix;
-                    linAlg::loadTranslationMatrix( invPivotTranslationMatrix, mRotationPivotOffset );
+                    linAlg::loadTranslationMatrix( invPivotTranslationMatrix, mRotationPivotPosArcSpaceWS );
                     rotArcBallDeltaMat = invPivotTranslationMatrix * rotArcBallDeltaMat * pivotTranslationMatrix;
                 #endif
 

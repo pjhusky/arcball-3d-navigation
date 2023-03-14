@@ -67,7 +67,7 @@ namespace ArcBall {
         void setRefFrameMat( const linAlg::mat3_t& refFrameMat );
         
         void setRotationPivotWS( const linAlg::vec3_t& offset );
-        linAlg::vec3_t getRotationPivotOffset() { return mRotationPivotOffset; }
+        linAlg::vec3_t getRotationPivotOffset() { return mRotationPivotPosArcSpaceWS; }
 
         void seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWS, const float& camTiltRadAngle, const float& camDist );
 
@@ -108,7 +108,7 @@ namespace ArcBall {
         linAlg::mat3x4_t mPrevRotMat;
 
         linAlg::mat3_t mRefFrameMat; // for camera rolling - without camera rolling, this may stay a unit matrix
-        linAlg::vec3_t mRotationPivotOffset;
+        linAlg::vec3_t mRotationPivotPosArcSpaceWS;
 
         linAlg::vec3_t mStartMouseNDC;
         linAlg::vec3_t mCurrMouseNDC;
