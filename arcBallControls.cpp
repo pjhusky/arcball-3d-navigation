@@ -65,9 +65,10 @@ ArcBallControls::ArcBallControls()
 
 void ArcBallControls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) { 
 
-#if 1// STABLE!!!
+#if 0 // STABLE!!!
     mRotationPivotOffset = pivotWSIn;  
 #else // UNSTABLE!!!
+    if (linAlg::dist( pivotWSIn, mRotationPivotOffset ) <= std::numeric_limits<float>::epsilon() * 100.0f) { return; }
     linAlg::vec3_t pivotWS = pivotWSIn;
     linAlg::applyTransformationToPoint( getArcRotMat(), &pivotWS, 1 );
     mRotationPivotOffset = pivotWS;
