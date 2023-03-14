@@ -377,6 +377,7 @@ void ArcBallControls::resetTrafos() {
     linAlg::loadIdentityMatrix( mViewMat );
 
     mPanVector = { 0.0f, 0.0f, 0.0f };
+    mRotationPivotPosArcSpaceWS = { 0.0f, 0.0f, 0.0f };
 
     linAlg::loadIdentityMatrix( mCurrRotMat );
     linAlg::loadIdentityMatrix( mPrevRotMat );
