@@ -100,7 +100,6 @@ namespace ArcBall {
         float getTargetMovement_dx() const { return mTargetMouse_dx; };
         float getTargetMovement_dy() const { return mTargetMouse_dy; };
 
-
     private:
         linAlg::mat3x4_t mArcRotMat;
         linAlg::mat3x4_t mTiltRotMat;

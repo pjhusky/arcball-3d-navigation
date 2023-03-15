@@ -133,13 +133,6 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     const float mouse_dx = (mIsActive) ? (mCurrMouseX - mPrevMouseX) : 0.0f;
     const float mouse_dy = (mIsActive) ? (mCurrMouseY - mPrevMouseY) : 0.0f;
 
-    if (fabsf( mouse_dx ) > 300.0f) {
-        printf( "x reiszt ab %f!\n", mouse_dx );
-    }
-    if (fabsf( mouse_dy ) > 300.0f) {
-        printf( "y reiszt ab %f!\n", mouse_dy );
-    }
-
     if (!mIsActive) {
         mTargetMouse_dx = 0.0f;
         mTargetMouse_dy = 0.0f;
@@ -361,8 +354,6 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
 
 void ArcBall::ArcBallControls::setViewMatrix( const linAlg::mat3x4_t& viewMatrix ) {
 
-    //auto safePivotPos = mRotationPivotPosArcSpaceWS;
-
     resetTrafos();
 
     mViewMat = viewMatrix;
@@ -377,31 +368,11 @@ void ArcBall::ArcBallControls::setViewMatrix( const linAlg::mat3x4_t& viewMatrix
     linAlg::castMatrix( rotOnlyMat3, rotOnlyMat );
     linAlg::mat3_t invRotOnlyMat3;
     linAlg::transpose(invRotOnlyMat3, rotOnlyMat3);
-    //mRefFrameMat = invRotOnlyMat3;
-
-
-    //linAlg::mat3x4_t invRotOnlyMat3x4;
-    //linAlg::loadIdentityMatrix( invRotOnlyMat3x4 );
-    //linAlg::vec4_t v4;
-    //linAlg::castVector( v4, invRotOnlyMat3[0] );
-    //invRotOnlyMat3x4[0] = v4;
-    //linAlg::castVector( v4, invRotOnlyMat3[1] );
-    //invRotOnlyMat3x4[1] = v4;
-    //linAlg::castVector( v4, invRotOnlyMat3[2] );
-    //invRotOnlyMat3x4[2] = v4;
-
-    //mTiltRotMat = rotOnlyMat;
-    //mArcRotMat = rotOnlyMat;
 
     mCurrRotMat = rotOnlyMat;
-    //mCurrRotMat = invRotOnlyMat3x4;
-    
-
 
     mPanVector = { viewMatrix[0][3], viewMatrix[1][3], viewMatrix[2][3] };
 
-
-    //mRotationPivotPosArcSpaceWS = safePivotPos;
 }
 
 void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat ) {
@@ -434,5 +405,4 @@ void ArcBallControls::resetTrafos() {
     mPrevMouseY = 0;
     mTargetMouse_dx = 0;
     mTargetMouse_dy = 0;
-
 }
