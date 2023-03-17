@@ -10,10 +10,10 @@ namespace {
     static constexpr float practicallyZero = std::numeric_limits<float>::epsilon() * 10.0f;
 }
 
-void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC, const linAlg::vec2_t& screenPos, const int32_t fbWidth, const int32_t fbHeight ) {
+void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC, const linAlg::vec2_t& relative_screenPos ) {
     // map cursor pos to NDC and project to unit sphere for z coordinate
-    mCurrMouseNDC[0] = (2.0f * screenPos[0] / (static_cast<float>(fbWidth) - 1.0f)) - 1.0f;
-    mCurrMouseNDC[1] = 2.0f - (2.0f * screenPos[1] / (static_cast<float>(fbHeight) - 1.0f)) - 1.0f;
+    mCurrMouseNDC[0] = (2.0f * relative_screenPos[0]) - 1.0f;
+    mCurrMouseNDC[1] = 2.0f - (2.0f * relative_screenPos[1]) - 1.0f;
 
     const float currX2 = mCurrMouseNDC[0] * mCurrMouseNDC[0];
     const float currY2 = mCurrMouseNDC[1] * mCurrMouseNDC[1];
@@ -41,13 +41,13 @@ ArcBallControls::ArcBallControls()
 
     mLMBdown = false;
 
-    mCurrMouseX = 0.0f;
-    mCurrMouseY = 0.0f;
-    mPrevMouseX = mCurrMouseX;
-    mPrevMouseY = mCurrMouseY;
+    mRelativeCurrMouseX = 0.0f;
+    mRelativeCurrMouseY = 0.0f;
+    mPrevRelativeMouseX = mRelativeCurrMouseX;
+    mPrevRelativeMouseY = mRelativeCurrMouseY;
     
-    mTargetMouse_dx = 0.0f;
-    mTargetMouse_dy = 0.0f;
+    mTargetRelativeMouse_dx = 0.0f;
+    mTargetRelativeMouse_dy = 0.0f;
 
     mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
     mCurrMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
@@ -114,31 +114,29 @@ void ArcBall::ArcBallControls::commonSeamlessSetRotationPivotWS( const float& ca
 }
 
 eRetVal ArcBallControls::update( const float deltaTimeSec, 
-                                 const float mouseX, 
-                                 const float mouseY, 
+                                 const float relativeMouseX, 
+                                 const float relativeMouseY, 
                                  const float camDist,
                                  const linAlg::vec3_t& camPanDelta,
                                  const float camTiltRadAngle,
                                  const bool LMBpressed, 
-                                 const bool RMBpressed, 
-                                 const int32_t screenW, 
-                                 const int32_t screenH ) {
+                                 const bool RMBpressed ) {
 
     (void)deltaTimeSec;
 
     
-    mCurrMouseX = mouseX;
-    mCurrMouseY = mouseY;
+    mRelativeCurrMouseX = relativeMouseX;
+    mRelativeCurrMouseY = relativeMouseY;
     
-    const float mouse_dx = (mIsActive) ? (mCurrMouseX - mPrevMouseX) : 0.0f;
-    const float mouse_dy = (mIsActive) ? (mCurrMouseY - mPrevMouseY) : 0.0f;
+    const float relative_mouse_dx = (mIsActive) ? (mRelativeCurrMouseX - mPrevRelativeMouseX) : 0.0f;
+    const float relative_mouse_dy = (mIsActive) ? (mRelativeCurrMouseY - mPrevRelativeMouseY) : 0.0f;
 
     if (!mIsActive) {
-        mTargetMouse_dx = 0.0f;
-        mTargetMouse_dy = 0.0f;
+        mTargetRelativeMouse_dx = 0.0f;
+        mTargetRelativeMouse_dy = 0.0f;
     }
 
-    calcArcMat( camTiltRadAngle, mouse_dx, mouse_dy, screenW, screenH, LMBpressed );
+    calcArcMat( camTiltRadAngle, relative_mouse_dx, relative_mouse_dy, LMBpressed );
 
     calcViewWithoutArcMatFrameMatrices( camTiltRadAngle, camPanDelta, camDist );
 
@@ -150,25 +148,25 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     // book keeping & updates //
     ////////////////////////////
 
-    mPrevMouseX = mCurrMouseX;
-    mPrevMouseY = mCurrMouseY;
+    mPrevRelativeMouseX = mRelativeCurrMouseX;
+    mPrevRelativeMouseY = mRelativeCurrMouseY;
 
     if (mInteractionModeDesc.smooth) {
-        if (fabsf( mTargetMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetMouse_dx *= getRotDampingFactor();
+        if (fabsf( mTargetRelativeMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+            mTargetRelativeMouse_dx *= getRotDampingFactor();
         }
         else {
-            mTargetMouse_dx = 0.0f;
+            mTargetRelativeMouse_dx = 0.0f;
         }
-        if (fabsf( mTargetMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetMouse_dy *= getRotDampingFactor();
+        if (fabsf( mTargetRelativeMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+            mTargetRelativeMouse_dy *= getRotDampingFactor();
         }
         else {
-            mTargetMouse_dy = 0.0f;
+            mTargetRelativeMouse_dy = 0.0f;
         }
     } /*else {
-        mTargetMouse_dx = 0.0f;
-        mTargetMouse_dy = 0.0f;
+        mTargetRelativeMouse_dx = 0.0f;
+        mTargetRelativeMouse_dy = 0.0f;
     }*/
 
     return eRetVal::OK;
@@ -205,7 +203,7 @@ void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float c
     mViewMat = mViewTranslationMat * mViewRotMat;
 }
 
-void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const float mouse_dx, const float mouse_dy, const int32_t screenW, const int32_t screenH, const bool LMBpressed )
+void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const float mouse_dx, const float mouse_dy, const bool LMBpressed )
 {
     linAlg::mat3_t rolledRefFrameMatT;
     {
@@ -230,25 +228,25 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
 
     if (mInteractionModeDesc.smooth) {
         if (mLMBdown) {
-            mTargetMouse_dx += mouse_dx * mMouseSensitivity; // * deltaTimeSec;
-            mTargetMouse_dy += mouse_dy * mMouseSensitivity; // * deltaTimeSec;
+            mTargetRelativeMouse_dx += mouse_dx * mMouseSensitivity; // * deltaTimeSec;
+            mTargetRelativeMouse_dy += mouse_dy * mMouseSensitivity; // * deltaTimeSec;
         }
     }
     else {
-        mTargetMouse_dx = mouse_dx * mMouseSensitivity;
-        mTargetMouse_dy = mouse_dy * mMouseSensitivity;
+        mTargetRelativeMouse_dx = mouse_dx * mMouseSensitivity;
+        mTargetRelativeMouse_dy = mouse_dy * mMouseSensitivity;
     }
 
     if (mInteractionModeDesc.fullCircle == true) { // continuous ArcBall rotation with grabbed mouse
 
-        if ((mInteractionModeDesc.smooth && sqrtf( mTargetMouse_dx * mTargetMouse_dx + mTargetMouse_dy * mTargetMouse_dy ) > mDeadZone) || mLMBdown) {
+        if ((mInteractionModeDesc.smooth && sqrtf( mTargetRelativeMouse_dx * mTargetRelativeMouse_dx + mTargetRelativeMouse_dy * mTargetRelativeMouse_dy ) > mDeadZone) || mLMBdown) {
             //printf( "LMB is down\n" );
 
             // always reset start to center of ArcBall
             mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
 
             // only take mouse delta and add it to center of ArcBall
-            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ screenW / 2 + mTargetMouse_dx, screenH / 2 + mTargetMouse_dy }, screenW, screenH );
+            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
 
             linAlg::normalize( mCurrMouseNDC );
             linAlg::normalize( mStartMouseNDC );
@@ -299,7 +297,7 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
     else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
         if (mLMBdown) {
             //printf( "LMB is down\n" );
-            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
+            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
 
             linAlg::normalize( mCurrMouseNDC );
             linAlg::normalize( mStartMouseNDC );
@@ -332,7 +330,7 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
 
         if (!mLMBdown && LMBpressed) {
             //printf( "LMB pressed\n" );
-            ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mCurrMouseX, mCurrMouseY }, screenW, screenH );
+            ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
 
             linAlg::applyTransformationToPoint( mRefFrameMat, &mStartMouseNDC, 1 );
             linAlg::normalize( mStartMouseNDC );
@@ -399,10 +397,10 @@ void ArcBallControls::resetTrafos() {
     mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
     mCurrMouseNDC  = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
 
-    mCurrMouseX = 0;
-    mCurrMouseY = 0;
-    mPrevMouseX = 0;
-    mPrevMouseY = 0;
-    mTargetMouse_dx = 0;
-    mTargetMouse_dy = 0;
+    mRelativeCurrMouseX = 0;
+    mRelativeCurrMouseY = 0;
+    mPrevRelativeMouseX = 0;
+    mPrevRelativeMouseY = 0;
+    mTargetRelativeMouse_dx = 0;
+    mTargetRelativeMouse_dy = 0;
 }

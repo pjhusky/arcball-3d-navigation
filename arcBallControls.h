@@ -34,25 +34,23 @@ namespace ArcBall {
             bool smooth;// rotation keeps going on when mouse button is no longer pressed
         };
         
-        static void mapScreenPosToArcBallPosNDC( linAlg::vec3_t& currMouseNDC, const linAlg::vec2_t& screenPos, const int32_t fbWidth, const int32_t fbHeight );
+        static void mapScreenPosToArcBallPosNDC( linAlg::vec3_t& currMouseNDC, const linAlg::vec2_t& screenPos );
 
         ArcBallControls();
         eRetVal update( const float deltaTimeSec, 
-                        const float mouseX, 
-                        const float mouseY,     
+                        const float relativeMouseX, 
+                        const float relativeMouseY,     
                         const float camDist,
                         const linAlg::vec3_t& camPanDelta,
                         const float camTiltRadAngle,
                         const bool LMBpressed, 
-                        const bool RMBpressed, 
-                        const int32_t screenW, 
-                        const int32_t screenH );
+                        const bool RMBpressed );
 
         // "view-matrix" part
         void calcViewWithoutArcMatFrameMatrices( const float camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float camDist );
 
         // "model-matrix" part
-        void calcArcMat( const float camTiltRadAngle, const float mouse_dx, const float mouse_dy, const int32_t screenW, const int32_t screenH, const bool LMBpressed );
+        void calcArcMat( const float camTiltRadAngle, const float relative_mouse_dx, const float relative_mouse_dy, const bool LMBpressed );
         
         const linAlg::mat3x4_t& getArcRotMat() const { return mArcRotMat; } // model matrix part - can be thought of as rotated object
         const linAlg::mat3x4_t& getTiltRotMat() const { return mTiltRotMat; }
@@ -97,8 +95,8 @@ namespace ArcBall {
         void resetTrafos();
         void setActive( const bool isActive ) { mIsActive = isActive; }
 
-        float getTargetMovement_dx() const { return mTargetMouse_dx; };
-        float getTargetMovement_dy() const { return mTargetMouse_dy; };
+        float getTargetMovement_dx() const { return mTargetRelativeMouse_dx; };
+        float getTargetMovement_dy() const { return mTargetRelativeMouse_dy; };
 
     private:
         linAlg::mat3x4_t mArcRotMat;
@@ -119,12 +117,12 @@ namespace ArcBall {
         linAlg::vec3_t mStartMouseNDC;
         linAlg::vec3_t mCurrMouseNDC;
 
-        float mCurrMouseX;
-        float mCurrMouseY;
-        float mPrevMouseX;
-        float mPrevMouseY;
-        float mTargetMouse_dx;
-        float mTargetMouse_dy;
+        float mRelativeCurrMouseX;
+        float mRelativeCurrMouseY;
+        float mPrevRelativeMouseX;
+        float mPrevRelativeMouseY;
+        float mTargetRelativeMouse_dx;
+        float mTargetRelativeMouse_dy;
         float mMouseSensitivity;
         float mRotDampingFactor;
         float mPanDampingFactor;
