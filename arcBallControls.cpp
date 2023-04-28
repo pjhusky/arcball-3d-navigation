@@ -34,7 +34,8 @@ ArcBallControls::ArcBallControls()
 
     setInteractionMode( InteractionModeDesc{ .fullCircle = true, .smooth = true } );
 
-    setRotDampingFactor( 0.875f );
+    //setRotDampingFactor( 0.875f );
+    setRotDampingFactor( 1.0f - 0.9975f );
     setMouseSensitivity( 0.866f );
     setMaxTraditionalRotDeg( 360.0f ); 
 
@@ -47,6 +48,11 @@ ArcBallControls::ArcBallControls()
     
     mTargetRelativeMouse_dx = 0.0f;
     mTargetRelativeMouse_dy = 0.0f;
+
+    mTargetRelativeMouseSmooth_dx = 0.0f;
+    mTargetRelativeMouseSmooth_dy = 0.0f;
+    //mDeadZoneSmooth = mDeadZone * 2.0f;
+    mDeadZoneSmooth = mDeadZone;
 
     mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
     mCurrMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
@@ -123,16 +129,30 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
 
     (void)deltaTimeSec;
 
+    if (LMBpressed) {
+        mRelativeCurrMouseX = relativeMouseX;
+        mRelativeCurrMouseY = relativeMouseY;
+    }
+    //else {
+    //    mRelativeCurrMouseX = 0.5f;
+    //    mRelativeCurrMouseY = 0.5f;
+    //}
+
+    //const float relative_mouse_dx = (mIsActive) ? (mRelativeCurrMouseX - mPrevRelativeMouseX) : 0.0f;
+    //const float relative_mouse_dy = (mIsActive) ? (mRelativeCurrMouseY - mPrevRelativeMouseY) : 0.0f;
+    float relative_mouse_dx = (mIsActive) ? (mRelativeCurrMouseX - mPrevRelativeMouseX) : 0.0f;
+    float relative_mouse_dy = (mIsActive) ? (mRelativeCurrMouseY - mPrevRelativeMouseY) : 0.0f;
     
-    mRelativeCurrMouseX = relativeMouseX;
-    mRelativeCurrMouseY = relativeMouseY;
-    
-    const float relative_mouse_dx = (mIsActive) ? (mRelativeCurrMouseX - mPrevRelativeMouseX) : 0.0f;
-    const float relative_mouse_dy = (mIsActive) ? (mRelativeCurrMouseY - mPrevRelativeMouseY) : 0.0f;
+    if ( !LMBpressed && getInteractionMode().smooth ) {
+        relative_mouse_dx = 0.0f;
+        relative_mouse_dy = 0.0f;
+    }
 
     if (!mIsActive) {
         mTargetRelativeMouse_dx = 0.0f;
         mTargetRelativeMouse_dy = 0.0f;
+        mTargetRelativeMouseSmooth_dx = 0.0f;
+        mTargetRelativeMouseSmooth_dy = 0.0f;
     }
 
     calcArcMat( camTiltRadAngle, relative_mouse_dx, relative_mouse_dy, LMBpressed );
@@ -150,23 +170,24 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     mPrevRelativeMouseX = mRelativeCurrMouseX;
     mPrevRelativeMouseY = mRelativeCurrMouseY;
 
+#if 1 // only for fullCircle interaction mode
     if (mInteractionModeDesc.smooth) {
+    //if (mInteractionModeDesc.smooth && mInteractionModeDesc.fullCircle) {
         if (fabsf( mTargetRelativeMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
             mTargetRelativeMouse_dx *= getRotDampingFactor();
-        }
-        else {
+        } else {
             mTargetRelativeMouse_dx = 0.0f;
         }
         if (fabsf( mTargetRelativeMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
             mTargetRelativeMouse_dy *= getRotDampingFactor();
-        }
-        else {
+        } else {
             mTargetRelativeMouse_dy = 0.0f;
         }
     } /*else {
         mTargetRelativeMouse_dx = 0.0f;
         mTargetRelativeMouse_dy = 0.0f;
     }*/
+#endif
 
     return eRetVal::OK;
 }
@@ -190,8 +211,7 @@ void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float c
     if (mInteractionModeDesc.smooth) {
         mPanVector[0] += camPanDelta[0];
         mPanVector[1] += camPanDelta[1];
-    }
-    else {
+    } else {
         mPanVector[0] += camPanDelta[0] / (mPanDampingFactor);
         mPanVector[1] += camPanDelta[1] / (mPanDampingFactor);
     }
@@ -227,13 +247,14 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
 
     if (mInteractionModeDesc.smooth) {
         if (mLMBdown) {
-            mTargetRelativeMouse_dx += mouse_dx * mMouseSensitivity; // * deltaTimeSec;
-            mTargetRelativeMouse_dy += mouse_dy * mMouseSensitivity; // * deltaTimeSec;
+            mTargetRelativeMouse_dx += mouse_dx;// * mMouseSensitivity; // * deltaTimeSec;
+            mTargetRelativeMouse_dy += mouse_dy;// * mMouseSensitivity; // * deltaTimeSec;
         }
-    }
-    else {
-        mTargetRelativeMouse_dx = mouse_dx * mMouseSensitivity;
-        mTargetRelativeMouse_dy = mouse_dy * mMouseSensitivity;
+    } else {
+        if (mLMBdown) {
+            mTargetRelativeMouse_dx = mouse_dx * mMouseSensitivity;
+            mTargetRelativeMouse_dy = mouse_dy * mMouseSensitivity;
+        }
     }
 
     if (mInteractionModeDesc.fullCircle == true) { // continuous ArcBall rotation with grabbed mouse
@@ -291,12 +312,50 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
         if (mLMBdown && !LMBpressed) {
             //printf( "LMB released\n" );
             mLMBdown = false;
+
+            //mStartMouseNDC = mCurrMouseNDC;
         }
     }
     else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
-        if (mLMBdown) {
+
+        float lenX = mRelativeCurrMouseX - mTargetRelativeMouseSmooth_dx;
+        float lenY = mRelativeCurrMouseY - mTargetRelativeMouseSmooth_dy;
+        float mouseSmooth_deltaLen = sqrtf( lenX * lenX + lenY * lenY );
+
+        if (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth ) {
+            //    mRelativeCurrMouseX += mTargetRelativeMouse_dx;
+            //    mRelativeCurrMouseY += mTargetRelativeMouse_dy;
+            mTargetRelativeMouseSmooth_dx = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dx + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseX;
+            mTargetRelativeMouseSmooth_dy = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dy + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseY;
+            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mTargetRelativeMouseSmooth_dx, mTargetRelativeMouseSmooth_dy } );
+        }
+
+        //if ((mInteractionModeDesc.smooth && sqrtf( mTargetRelativeMouseSmooth_dx * mTargetRelativeMouseSmooth_dx + mTargetRelativeMouseSmooth_dy * mTargetRelativeMouseSmooth_dy ) > mDeadZoneSmooth) || mLMBdown) {
+        if ( (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth) || mLMBdown ) {
+        //if ( mLMBdown ) {
+
             //printf( "LMB is down\n" );
-            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
+
+            // only take mouse delta and add it to center of ArcBall
+            //ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
+
+            //if (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth ) {
+            ////    mRelativeCurrMouseX += mTargetRelativeMouse_dx;
+            ////    mRelativeCurrMouseY += mTargetRelativeMouse_dy;
+            //    mTargetRelativeMouseSmooth_dx = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dx + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseX;
+            //    mTargetRelativeMouseSmooth_dy = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dy + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseY;
+            //    ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mTargetRelativeMouseSmooth_dx, mTargetRelativeMouseSmooth_dy } );
+            //}
+
+            if (!mInteractionModeDesc.smooth) 
+            //else if (!mInteractionModeDesc.smooth) 
+            {
+
+            ////!!! 
+                ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
+            }
+
+
 
             linAlg::normalize( mCurrMouseNDC );
             linAlg::normalize( mStartMouseNDC );
@@ -329,7 +388,21 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
 
         if (!mLMBdown && LMBpressed) {
             //printf( "LMB pressed\n" );
-            ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
+
+            //if (mInteractionModeDesc.smooth) {
+            //    mRelativeCurrMouseX = 0.5f;
+            //    mRelativeCurrMouseY = 0.5f;
+            //}
+            //mTargetRelativeMouse_dx = 0.0f;
+            //mTargetRelativeMouse_dy = 0.0f;
+            mTargetRelativeMouseSmooth_dx = mRelativeCurrMouseX;
+            mTargetRelativeMouseSmooth_dy = mRelativeCurrMouseY;
+
+            //if (mInteractionModeDesc.smooth) {
+            //    ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
+            //} else {
+                ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
+            //}
 
             linAlg::applyTransformationToPoint( mRefFrameMat, &mStartMouseNDC, 1 );
             linAlg::normalize( mStartMouseNDC );
@@ -338,11 +411,15 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
         }
         if (mLMBdown && !LMBpressed) {
             //printf( "LMB released\n" );
-            linAlg::mat3x4_t tmpLastRotMat;
-            linAlg::multMatrix( tmpLastRotMat, mCurrRotMat, mPrevRotMat );
-            mPrevRotMat = tmpLastRotMat;
-            linAlg::loadIdentityMatrix( mCurrRotMat );
-            mLMBdown = false;
+
+            if ( !mInteractionModeDesc.smooth || ( mInteractionModeDesc.smooth && mouseSmooth_deltaLen < mDeadZoneSmooth) ) 
+            {
+                linAlg::mat3x4_t tmpLastRotMat;
+                linAlg::multMatrix( tmpLastRotMat, mCurrRotMat, mPrevRotMat );
+                mPrevRotMat = tmpLastRotMat;
+                linAlg::loadIdentityMatrix( mCurrRotMat );
+                mLMBdown = false;
+            }
         }
 
         linAlg::multMatrix( mArcRotMat, mCurrRotMat, mPrevRotMat );
@@ -402,4 +479,7 @@ void ArcBallControls::resetTrafos() {
     mPrevRelativeMouseY = 0;
     mTargetRelativeMouse_dx = 0;
     mTargetRelativeMouse_dy = 0;
+
+    mTargetRelativeMouseSmooth_dx = 0;
+    mTargetRelativeMouseSmooth_dy = 0;
 }

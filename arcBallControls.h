@@ -128,6 +128,10 @@ namespace ArcBall {
         float mPanDampingFactor;
         float mDeadZone;
 
+        float mTargetRelativeMouseSmooth_dx;
+        float mTargetRelativeMouseSmooth_dy;
+        float mDeadZoneSmooth;
+
         float mMaxTraditionalRotDeg; // 180.0f for traditional arcBall, 360.0f for one full rotation per mouse-drag (stronger movement)
 
         InteractionModeDesc mInteractionModeDesc;
