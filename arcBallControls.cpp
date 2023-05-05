@@ -3,13 +3,56 @@
 #include <limits.h>
 #include <assert.h>
 
+//#include <functional>
+#include <utility>
+
 using namespace ArcBall;
 
 namespace {
     static constexpr float practicallyZero = std::numeric_limits<float>::epsilon() * 10.0f;
+
+    //template< typename raiiFunc_T >
+    //struct Scoped_t {
+    //    Scoped_t( raiiFunc_T& func ) { mFunc = func };
+    //    ~Scoped_t() { func(); }
+
+    //private:
+    //    raiiFunc_T mFunc;
+    //};
 }
 
-void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC, const linAlg::vec2_t& relative_screenPos ) {
+// https://github.com/offa/cpp-guards/blob/master/include/guards/ScopeGuard.h
+namespace guards
+{
+    template<class Function>
+    struct ScopeGuard {
+        explicit ScopeGuard(Function&& fn) noexcept : m_function(std::move_if_noexcept(fn)) {}
+
+        ScopeGuard(ScopeGuard&&) noexcept = default;
+        ScopeGuard(const ScopeGuard&) = delete;
+
+        ~ScopeGuard() noexcept {
+            m_function();
+        }
+
+        ScopeGuard& operator=(ScopeGuard&&) = delete;
+        ScopeGuard& operator=(const ScopeGuard&) = delete;
+
+    private:
+        Function m_function;
+    };
+
+
+    template<class Function>
+    constexpr ScopeGuard<Function> makeScopeGuard(Function&& fn) noexcept {
+        return ScopeGuard<Function>{std::forward<Function>(fn)};
+    }
+}
+
+
+
+
+void ArcBall::Controls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC, const linAlg::vec2_t& relative_screenPos ) {
     // map cursor pos to NDC and project to unit sphere for z coordinate
     mCurrMouseNDC[0] = (2.0f * relative_screenPos[0]) - 1.0f;
     mCurrMouseNDC[1] = 2.0f - (2.0f * relative_screenPos[1]) - 1.0f;
@@ -26,8 +69,8 @@ void ArcBallControls::mapScreenPosToArcBallPosNDC( linAlg::vec3_t& mCurrMouseNDC
 }
 
 
-ArcBallControls::ArcBallControls()
-    : mDeadZone( practicallyZero * 1000.0f )
+ArcBall::Controls::Controls()
+    : mDeadZone( /*practicallyZero * 1000.0f*/ 0.001f )
     , mIsActive( true ) {
 
     resetTrafos();
@@ -39,27 +82,30 @@ ArcBallControls::ArcBallControls()
     setMouseSensitivity( 0.866f );
     setMaxTraditionalRotDeg( 360.0f ); 
 
-    mLMBdown = false;
+    mLMBheldDown = false;
 
-    mRelativeCurrMouseX = 0.0f;
-    mRelativeCurrMouseY = 0.0f;
-    mPrevRelativeMouseX = mRelativeCurrMouseX;
-    mPrevRelativeMouseY = mRelativeCurrMouseY;
+    //mRelativeCurrMouseX = 0.0f;
+    //mRelativeCurrMouseY = 0.0f;
+    //mPrevRelativeMouseX = mRelativeCurrMouseX;
+    //mPrevRelativeMouseY = mRelativeCurrMouseY;
     
-    mTargetRelativeMouse_dx = 0.0f;
-    mTargetRelativeMouse_dy = 0.0f;
+    //mTargetRelativeMouse_dx = 0.0f;
+    //mTargetRelativeMouse_dy = 0.0f;
 
-    mTargetRelativeMouseSmooth_dx = 0.0f;
-    mTargetRelativeMouseSmooth_dy = 0.0f;
-    //mDeadZoneSmooth = mDeadZone * 2.0f;
-    mDeadZoneSmooth = mDeadZone;
+    //mTargetRelativeMouseSmooth_dx = 0.0f;
+    //mTargetRelativeMouseSmooth_dy = 0.0f;
+    ////mDeadZoneSmooth = mDeadZone * 2.0f;
+    //mDeadZoneSmooth = mDeadZone;
+
+    //mPrevRelMouseX = 0.0f;
+    //mPrevRelMouseY = 0.0f;
 
     mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
     mCurrMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 0.0f };
 }
 
 
-void ArcBallControls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) { 
+void ArcBall::Controls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) { 
 
 #if 0 // STABLE!!!
     mRotationPivotPosArcSpaceWS = pivotWSIn;
@@ -70,15 +116,15 @@ void ArcBallControls::setRotationPivotWS( const linAlg::vec3_t& pivotWSIn ) {
     mRotationPivotPosArcSpaceWS = pivotWS;
 #endif
 }
-void ArcBall::ArcBallControls::setRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS ) {
+void ArcBall::Controls::setRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS ) {
     mRotationPivotPosArcSpaceWS = pivotArcSpaceWS;
 }
 
 
-linAlg::vec3_t ArcBall::ArcBallControls::getRotationPivotOffsetArcSpaceWS() { 
+linAlg::vec3_t ArcBall::Controls::getRotationPivotOffsetArcSpaceWS() { 
     return mRotationPivotPosArcSpaceWS; 
 }
-linAlg::vec3_t ArcBall::ArcBallControls::getRotationPivotOffsetWS() { 
+linAlg::vec3_t ArcBall::Controls::getRotationPivotOffsetWS() { 
     linAlg::mat4_t arcRotMat4;
     linAlg::castMatrix( arcRotMat4, getArcRotMat() );
     linAlg::mat4_t invArcRotMat4;
@@ -90,17 +136,17 @@ linAlg::vec3_t ArcBall::ArcBallControls::getRotationPivotOffsetWS() {
     return linAlg::vec3_t{ pivotWS[0], pivotWS[1], pivotWS[2] };
 }
 
-void ArcBallControls::seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWSIn, const float& camTiltRadAngle, const float& camDist ) {
+void ArcBall::Controls::seamlessSetRotationPivotWS( const linAlg::vec3_t& pivotWSIn, const float& camTiltRadAngle, const float& camDist ) {
     setRotationPivotWS( pivotWSIn );
     commonSeamlessSetRotationPivotWS( camTiltRadAngle, camDist );
 }
 
-void ArcBallControls::seamlessSetRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS, const float& camTiltRadAngle, const float& camDist ) {
+void ArcBall::Controls::seamlessSetRotationPivotArcSpaceWS( const linAlg::vec3_t& pivotArcSpaceWS, const float& camTiltRadAngle, const float& camDist ) {
     setRotationPivotArcSpaceWS( pivotArcSpaceWS );
     commonSeamlessSetRotationPivotWS( camTiltRadAngle, camDist );
 }
 
-void ArcBall::ArcBallControls::commonSeamlessSetRotationPivotWS( const float& camTiltRadAngle, const float& camDist )
+void ArcBall::Controls::commonSeamlessSetRotationPivotWS( const float& camTiltRadAngle, const float& camDist )
 {
     linAlg::vec3_t prevRefPtES{ 0.0f, 0.0f, 0.0f };
     auto viewWithoutArcMat = getViewTranslationMat() * getTiltRotMat();
@@ -118,21 +164,36 @@ void ArcBall::ArcBallControls::commonSeamlessSetRotationPivotWS( const float& ca
     addPanDelta( panDeltaPivotCompensation );
 }
 
-eRetVal ArcBallControls::update( const float deltaTimeSec, 
-                                 const float relativeMouseX, 
-                                 const float relativeMouseY, 
-                                 const float camDist,
-                                 const linAlg::vec3_t& camPanDelta,
-                                 const float camTiltRadAngle,
-                                 const bool LMBpressed, 
-                                 const bool RMBpressed ) {
+eRetVal ArcBall::Controls::update(  const float deltaTimeSec, 
+                                    const float relMouseX, 
+                                    const float relMouseY, 
+                                    const float relMouse_dx,
+                                    const float relMouse_dy,
+                                    const float camDist,
+                                    const linAlg::vec3_t& camPanDelta,
+                                    const float camTiltRadAngle
+                                    ,const bool LMBpressed
+                                    //,const bool RMBpressed 
+) {
 
     (void)deltaTimeSec;
 
-    if (LMBpressed) {
-        mRelativeCurrMouseX = relativeMouseX;
-        mRelativeCurrMouseY = relativeMouseY;
-    }
+    auto scopeGuard = guards::makeScopeGuard([&]{ 
+        //mPrevRelMouseX = relMouseX; 
+        //mPrevRelMouseY = relMouseY;
+     } );
+   
+    //const auto relMouse_dx = relMouseX - mPrevRelMouseX;
+    //const auto relMouse_dy = relMouseY - mPrevRelMouseY;
+    
+
+
+    //const float relMouseDelta = sqrtf( relMouseX * relMouseX + relMouseY * relMouseY );
+
+    //if (LMBpressed) {
+    //    mRelativeCurrMouseX = relMouseX;
+    //    mRelativeCurrMouseY = relMouseY;
+    //}
     //else {
     //    mRelativeCurrMouseX = 0.5f;
     //    mRelativeCurrMouseY = 0.5f;
@@ -140,22 +201,23 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
 
     //const float relative_mouse_dx = (mIsActive) ? (mRelativeCurrMouseX - mPrevRelativeMouseX) : 0.0f;
     //const float relative_mouse_dy = (mIsActive) ? (mRelativeCurrMouseY - mPrevRelativeMouseY) : 0.0f;
-    float relative_mouse_dx = (mIsActive) ? (mRelativeCurrMouseX - mPrevRelativeMouseX) : 0.0f;
-    float relative_mouse_dy = (mIsActive) ? (mRelativeCurrMouseY - mPrevRelativeMouseY) : 0.0f;
-    
-    if ( !LMBpressed && getInteractionMode().smooth ) {
-        relative_mouse_dx = 0.0f;
-        relative_mouse_dy = 0.0f;
-    }
+    //float relative_mouse_dx = (mIsActive) ? (mRelativeCurrMouseX - mPrevRelativeMouseX) : 0.0f;
+    //float relative_mouse_dy = (mIsActive) ? (mRelativeCurrMouseY - mPrevRelativeMouseY) : 0.0f;
+    //
+    //if ( !LMBpressed && getInteractionMode().smooth ) {
+    //    relative_mouse_dx = 0.0f;
+    //    relative_mouse_dy = 0.0f;
+    //}
 
-    if (!mIsActive) {
-        mTargetRelativeMouse_dx = 0.0f;
-        mTargetRelativeMouse_dy = 0.0f;
-        mTargetRelativeMouseSmooth_dx = 0.0f;
-        mTargetRelativeMouseSmooth_dy = 0.0f;
-    }
+    //if (!mIsActive) {
+    //    mTargetRelativeMouse_dx = 0.0f;
+    //    mTargetRelativeMouse_dy = 0.0f;
+    //    mTargetRelativeMouseSmooth_dx = 0.0f;
+    //    mTargetRelativeMouseSmooth_dy = 0.0f;
+    //}
 
-    calcArcMat( camTiltRadAngle, relative_mouse_dx, relative_mouse_dy, LMBpressed );
+    //calcArcMat( camTiltRadAngle, relative_mouse_dx, relative_mouse_dy, LMBpressed );
+    calcArcMat( camTiltRadAngle, relMouseX, relMouseY, relMouse_dx, relMouse_dy, LMBpressed );
 
     calcViewWithoutArcMatFrameMatrices( camTiltRadAngle, camPanDelta, camDist );
 
@@ -167,32 +229,33 @@ eRetVal ArcBallControls::update( const float deltaTimeSec,
     // book keeping & updates //
     ////////////////////////////
 
-    mPrevRelativeMouseX = mRelativeCurrMouseX;
-    mPrevRelativeMouseY = mRelativeCurrMouseY;
+    //mPrevRelativeMouseX = mRelativeCurrMouseX;
+    //mPrevRelativeMouseY = mRelativeCurrMouseY;
 
-#if 1 // only for fullCircle interaction mode
+#if 0 // only for fullCircle interaction mode
     if (mInteractionModeDesc.smooth) {
     //if (mInteractionModeDesc.smooth && mInteractionModeDesc.fullCircle) {
-        if (fabsf( mTargetRelativeMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetRelativeMouse_dx *= getRotDampingFactor();
-        } else {
-            mTargetRelativeMouse_dx = 0.0f;
-        }
-        if (fabsf( mTargetRelativeMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
-            mTargetRelativeMouse_dy *= getRotDampingFactor();
-        } else {
-            mTargetRelativeMouse_dy = 0.0f;
-        }
+        //if (fabsf( mTargetRelativeMouse_dx ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+        //    mTargetRelativeMouse_dx *= getRotDampingFactor();
+        //} else {
+        //    mTargetRelativeMouse_dx = 0.0f;
+        //}
+        //if (fabsf( mTargetRelativeMouse_dy ) > mDeadZone) { // prevent mTargetmouse_dx from becomming too small "#DEN => denormalized" - may have caused the weird disappearance glitch on mouse interaction
+        //    mTargetRelativeMouse_dy *= getRotDampingFactor();
+        //} else {
+        //    mTargetRelativeMouse_dy = 0.0f;
+        //}
     } /*else {
         mTargetRelativeMouse_dx = 0.0f;
         mTargetRelativeMouse_dy = 0.0f;
     }*/
 #endif
 
+
     return eRetVal::OK;
 }
 
-void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float camDist )
+void ArcBall::Controls::calcViewWithoutArcMatFrameMatrices( const float camTiltRadAngle, const linAlg::vec3_t& camPanDelta, const float camDist )
 {
     linAlg::loadRotationZMatrix( mTiltRotMat, camTiltRadAngle );
 
@@ -205,7 +268,7 @@ void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float c
     linAlg::loadTranslationMatrix( invPivotTranslationMatrix, invPivotTranslationPos );
     mTiltRotMat = invPivotTranslationMatrix * mTiltRotMat * pivotTranslationMatrix;
 #endif
-    //mViewRotMat = mTiltRotMat * mArcRotMat;
+    
     mViewRotMat = mTiltRotMat;
 
     if (mInteractionModeDesc.smooth) {
@@ -222,8 +285,9 @@ void ArcBall::ArcBallControls::calcViewWithoutArcMatFrameMatrices( const float c
     mViewMat = mViewTranslationMat * mViewRotMat;
 }
 
-void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const float mouse_dx, const float mouse_dy, const bool LMBpressed )
-{
+void ArcBall::Controls::calcArcMat( const float camTiltRadAngle, const float relMouseX, const float relMouseY, const float mouse_dx, const float mouse_dy
+    , const bool LMBpressed 
+    ) {
     linAlg::mat3_t rolledRefFrameMatT;
     {
         linAlg::mat3x4_t camRollMat;
@@ -245,31 +309,40 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
         setRefFrameMat( rolledRefFrameMatT );
     }
 
-    if (mInteractionModeDesc.smooth) {
-        if (mLMBdown) {
-            mTargetRelativeMouse_dx += mouse_dx;// * mMouseSensitivity; // * deltaTimeSec;
-            mTargetRelativeMouse_dy += mouse_dy;// * mMouseSensitivity; // * deltaTimeSec;
-        }
-    } else {
-        if (mLMBdown) {
-            mTargetRelativeMouse_dx = mouse_dx * mMouseSensitivity;
-            mTargetRelativeMouse_dy = mouse_dy * mMouseSensitivity;
-        }
+    //if (mInteractionModeDesc.smooth) {
+    //    if (mLMBheldDown) {
+    //        mTargetRelativeMouse_dx += mouse_dx;// * mMouseSensitivity; // * deltaTimeSec;
+    //        mTargetRelativeMouse_dy += mouse_dy;// * mMouseSensitivity; // * deltaTimeSec;
+    //    }
+    //} else {
+    //    if (mLMBheldDown) {
+    //        mTargetRelativeMouse_dx = mouse_dx * mMouseSensitivity;
+    //        mTargetRelativeMouse_dy = mouse_dy * mMouseSensitivity;
+    //    }
+    //}
+
+    float relMouseDelta = sqrtf( mouse_dx * mouse_dx + mouse_dy * mouse_dy );
+    if (!mLMBheldDown || relMouseDelta <= mDeadZone) {
+        relMouseDelta = 0.0f;
     }
 
     if (mInteractionModeDesc.fullCircle == true) { // continuous ArcBall rotation with grabbed mouse
 
-        if ((mInteractionModeDesc.smooth && sqrtf( mTargetRelativeMouse_dx * mTargetRelativeMouse_dx + mTargetRelativeMouse_dy * mTargetRelativeMouse_dy ) > mDeadZone) || mLMBdown) {
+        //if ((mInteractionModeDesc.smooth && sqrtf( mTargetRelativeMouse_dx * mTargetRelativeMouse_dx + mTargetRelativeMouse_dy * mTargetRelativeMouse_dy ) > mDeadZone) || mLMBheldDown) {
+        //if ((mInteractionModeDesc.smooth && sqrtf( mouse_dx * mouse_dx + mouse_dy * mouse_dy ) > mDeadZone) || mLMBheldDown) {
+        //if ( relMouseDelta > mDeadZone || mLMBheldDown ) {
+        if ( mLMBheldDown ) {
             //printf( "LMB is down\n" );
 
             // always reset start to center of ArcBall
             mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
 
             // only take mouse delta and add it to center of ArcBall
-            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
+            //Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
+            ArcBall::Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ 0.5f + mouse_dx, 0.5f + mouse_dy } );
 
             linAlg::normalize( mCurrMouseNDC );
-            linAlg::normalize( mStartMouseNDC );
+            //linAlg::normalize( mStartMouseNDC );
 
             float cosAngle = linAlg::dot( mStartMouseNDC, mCurrMouseNDC );
             assert( cosAngle > 0.0 );
@@ -305,60 +378,61 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
             }
         }
 
-        if (!mLMBdown && LMBpressed) {
+        if (!mLMBheldDown && LMBpressed) {
             //printf( "LMB pressed\n" );
-            mLMBdown = true;
+            mLMBheldDown = true;
         }
-        if (mLMBdown && !LMBpressed) {
+        if (mLMBheldDown && !LMBpressed && relMouseDelta <= mDeadZone) {
             //printf( "LMB released\n" );
-            mLMBdown = false;
-
+            mLMBheldDown = false;
             //mStartMouseNDC = mCurrMouseNDC;
         }
-    }
-    else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
 
-        float lenX = mRelativeCurrMouseX - mTargetRelativeMouseSmooth_dx;
-        float lenY = mRelativeCurrMouseY - mTargetRelativeMouseSmooth_dy;
-        float mouseSmooth_deltaLen = sqrtf( lenX * lenX + lenY * lenY );
+    } else { // Traditional Arcball - works, but doesn't spin more than 180° in any dir
 
-        if (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth ) {
-            //    mRelativeCurrMouseX += mTargetRelativeMouse_dx;
-            //    mRelativeCurrMouseY += mTargetRelativeMouse_dy;
-            mTargetRelativeMouseSmooth_dx = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dx + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseX;
-            mTargetRelativeMouseSmooth_dy = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dy + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseY;
-            ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mTargetRelativeMouseSmooth_dx, mTargetRelativeMouseSmooth_dy } );
-        }
+        //float lenX = mRelativeCurrMouseX - mTargetRelativeMouseSmooth_dx;
+        //float lenY = mRelativeCurrMouseY - mTargetRelativeMouseSmooth_dy;
+        //float mouseSmooth_deltaLen = sqrtf( lenX * lenX + lenY * lenY );
 
-        //if ((mInteractionModeDesc.smooth && sqrtf( mTargetRelativeMouseSmooth_dx * mTargetRelativeMouseSmooth_dx + mTargetRelativeMouseSmooth_dy * mTargetRelativeMouseSmooth_dy ) > mDeadZoneSmooth) || mLMBdown) {
-        if ( (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth) || mLMBdown ) {
-        //if ( mLMBdown ) {
+
+        //if (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth ) {
+        //if ( mInteractionModeDesc.smooth ) {
+        //    mTargetRelativeMouseSmooth_dx = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dx + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseX;
+        //    mTargetRelativeMouseSmooth_dy = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dy + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseY;
+        //    ArcBall::Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mTargetRelativeMouseSmooth_dx, mTargetRelativeMouseSmooth_dy } );
+        //}
+        static float fixX = 0.0f;
+        static float fixY = 0.0f;
+
+        //if ((mInteractionModeDesc.smooth && sqrtf( mTargetRelativeMouseSmooth_dx * mTargetRelativeMouseSmooth_dx + mTargetRelativeMouseSmooth_dy * mTargetRelativeMouseSmooth_dy ) > mDeadZoneSmooth) || mLMBheldDown) {
+        //if ( (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth) || mLMBheldDown ) {
+        //if ( mInteractionModeDesc.smooth || mLMBheldDown ) {
+        if ( mLMBheldDown /* || relMouseDelta > mDeadZone */) {
+        //if ( mLMBheldDown ) {
 
             //printf( "LMB is down\n" );
 
             // only take mouse delta and add it to center of ArcBall
-            //ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
+            //Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
 
             //if (mInteractionModeDesc.smooth && mouseSmooth_deltaLen > mDeadZoneSmooth ) {
-            ////    mRelativeCurrMouseX += mTargetRelativeMouse_dx;
-            ////    mRelativeCurrMouseY += mTargetRelativeMouse_dy;
-            //    mTargetRelativeMouseSmooth_dx = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dx + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseX;
-            //    mTargetRelativeMouseSmooth_dy = (getRotDampingFactor()) * mTargetRelativeMouseSmooth_dy + (1.0f - getRotDampingFactor()) * mRelativeCurrMouseY;
-            //    ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mTargetRelativeMouseSmooth_dx, mTargetRelativeMouseSmooth_dy } );
+            //    ArcBall::Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mTargetRelativeMouseSmooth_dx, mTargetRelativeMouseSmooth_dy } );
+            //}
+            
+            //if (!mInteractionModeDesc.smooth && mLMBheldDown) {
+
+            //////!!! 
+            //    ArcBall::Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
             //}
 
-            if (!mInteractionModeDesc.smooth) 
-            //else if (!mInteractionModeDesc.smooth) 
-            {
-
-            ////!!! 
-                ArcBallControls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
-            }
-
-
+            //ArcBall::Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ relMouseX, relMouseY } );
+            
+            fixX += mouse_dx;
+            fixY += mouse_dy;
+            ArcBall::Controls::mapScreenPosToArcBallPosNDC( mCurrMouseNDC, linAlg::vec2_t{ fixX, fixY } );
 
             linAlg::normalize( mCurrMouseNDC );
-            linAlg::normalize( mStartMouseNDC );
+            //linAlg::normalize( mStartMouseNDC );
 
             linAlg::applyTransformationToPoint( mRefFrameMat, &mCurrMouseNDC, 1 );
 
@@ -384,49 +458,51 @@ void ArcBall::ArcBallControls::calcArcMat( const float camTiltRadAngle, const fl
                 mCurrRotMat = invPivotTranslationMatrix * mCurrRotMat * pivotTranslationMatrix;
             #endif
             }
+
         }
 
-        if (!mLMBdown && LMBpressed) {
+        //else 
+        if (!mLMBheldDown && LMBpressed ) {
             //printf( "LMB pressed\n" );
 
-            //if (mInteractionModeDesc.smooth) {
-            //    mRelativeCurrMouseX = 0.5f;
-            //    mRelativeCurrMouseY = 0.5f;
-            //}
-            //mTargetRelativeMouse_dx = 0.0f;
-            //mTargetRelativeMouse_dy = 0.0f;
-            mTargetRelativeMouseSmooth_dx = mRelativeCurrMouseX;
-            mTargetRelativeMouseSmooth_dy = mRelativeCurrMouseY;
+            //mTargetRelativeMouseSmooth_dx = mRelativeCurrMouseX;
+            //mTargetRelativeMouseSmooth_dy = mRelativeCurrMouseY;
 
-            //if (mInteractionModeDesc.smooth) {
-            //    ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ 0.5f + mTargetRelativeMouse_dx, 0.5f + mTargetRelativeMouse_dy } );
-            //} else {
-                ArcBallControls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
-            //}
+            //Controls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mRelativeCurrMouseX, mRelativeCurrMouseY } );
+            //ArcBall::Controls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ mouse_dx, mouse_dy } );
+            ArcBall::Controls::mapScreenPosToArcBallPosNDC( mStartMouseNDC, linAlg::vec2_t{ relMouseX, relMouseY} );
 
             linAlg::applyTransformationToPoint( mRefFrameMat, &mStartMouseNDC, 1 );
             linAlg::normalize( mStartMouseNDC );
 
-            mLMBdown = true;
+            fixX = relMouseX;
+            fixY = relMouseY;
+                            
+            mLMBheldDown = true;
         }
-        if (mLMBdown && !LMBpressed) {
+        //else 
+        if (mLMBheldDown && !LMBpressed && relMouseDelta <= mDeadZone) {
             //printf( "LMB released\n" );
 
-            if ( !mInteractionModeDesc.smooth || ( mInteractionModeDesc.smooth && mouseSmooth_deltaLen < mDeadZoneSmooth) ) 
+            //if ( !mInteractionModeDesc.smooth || ( mInteractionModeDesc.smooth && mouseSmooth_deltaLen <= mDeadZoneSmooth) ) 
+            //if ( !mInteractionModeDesc.smooth ) 
             {
                 linAlg::mat3x4_t tmpLastRotMat;
                 linAlg::multMatrix( tmpLastRotMat, mCurrRotMat, mPrevRotMat );
                 mPrevRotMat = tmpLastRotMat;
                 linAlg::loadIdentityMatrix( mCurrRotMat );
-                mLMBdown = false;
+                mLMBheldDown = false;
             }
+
+            fixX = 0.0f;
+            fixY = 0.0f;
         }
 
         linAlg::multMatrix( mArcRotMat, mCurrRotMat, mPrevRotMat );
     }
 }
 
-void ArcBall::ArcBallControls::setViewMatrix( const linAlg::mat3x4_t& viewMatrix ) {
+void ArcBall::Controls::setViewMatrix( const linAlg::mat3x4_t& viewMatrix ) {
 
     resetTrafos();
 
@@ -449,12 +525,12 @@ void ArcBall::ArcBallControls::setViewMatrix( const linAlg::mat3x4_t& viewMatrix
 
 }
 
-void ArcBallControls::setRefFrameMat( const linAlg::mat3_t& refFrameMat ) {
+void ArcBall::Controls::setRefFrameMat( const linAlg::mat3_t& refFrameMat ) {
     mRefFrameMat = refFrameMat;
     linAlg::orthogonalize( mRefFrameMat );
 }
 
-void ArcBallControls::resetTrafos() {
+void ArcBall::Controls::resetTrafos() {
     
     linAlg::loadIdentityMatrix( mArcRotMat );
     linAlg::loadIdentityMatrix( mTiltRotMat );
@@ -473,13 +549,13 @@ void ArcBallControls::resetTrafos() {
     mStartMouseNDC = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
     mCurrMouseNDC  = linAlg::vec3_t{ 0.0f, 0.0f, 1.0f };
 
-    mRelativeCurrMouseX = 0;
-    mRelativeCurrMouseY = 0;
-    mPrevRelativeMouseX = 0;
-    mPrevRelativeMouseY = 0;
-    mTargetRelativeMouse_dx = 0;
-    mTargetRelativeMouse_dy = 0;
+    //mRelativeCurrMouseX = 0;
+    //mRelativeCurrMouseY = 0;
+    //mPrevRelativeMouseX = 0;
+    //mPrevRelativeMouseY = 0;
+    //mTargetRelativeMouse_dx = 0;
+    //mTargetRelativeMouse_dy = 0;
 
-    mTargetRelativeMouseSmooth_dx = 0;
-    mTargetRelativeMouseSmooth_dy = 0;
+    //mTargetRelativeMouseSmooth_dx = 0;
+    //mTargetRelativeMouseSmooth_dy = 0;
 }
