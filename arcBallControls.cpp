@@ -1,6 +1,6 @@
 #include "arcBallControls.h"
 
-#include <limits.h>
+#include <limits>
 #include <assert.h>
 
 //#include <functional>
