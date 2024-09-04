@@ -99,9 +99,6 @@ namespace ArcBall {
         void resetTrafos();
         void setActive( const bool isActive ) { mIsActive = isActive; }
 
-        //float getTargetMovement_dx() const { return mTargetRelativeMouse_dx; };
-        //float getTargetMovement_dy() const { return mTargetRelativeMouse_dy; };
-
     private:
         linAlg::mat3x4_t mArcRotMat;
         linAlg::mat3x4_t mTiltRotMat;
@@ -121,22 +118,10 @@ namespace ArcBall {
         linAlg::vec3_t mStartMouseNDC;
         linAlg::vec3_t mCurrMouseNDC;
 
-        //float mRelMouse_dx;
-        //float mRelMouse_dy;
-        //float mRelativeCurrMouseX;
-        //float mRelativeCurrMouseY;
-        //float mPrevRelMouseX;
-        //float mPrevRelMouseY;
-        //float mTargetRelativeMouse_dx;
-        //float mTargetRelativeMouse_dy;
         float mMouseSensitivity;
         float mRotDampingFactor;
         float mPanDampingFactor;
         float mDeadZone;
-
-        //float mTargetRelativeMouseSmooth_dx;
-        //float mTargetRelativeMouseSmooth_dy;
-        //float mDeadZoneSmooth;
 
         float mMaxTraditionalRotDeg; // 180.0f for traditional arcBall, 360.0f for one full rotation per mouse-drag (stronger movement)
 
